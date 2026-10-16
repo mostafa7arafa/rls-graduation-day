@@ -101,6 +101,7 @@ export const MAPS: Record<string, MapDef> = {
       { key: 'car', id: 'car', x: 44 * T, y: 36 * T, block: [[2, 14, 60, 20]], when: '!car_gone' },
       { key: 'flag', x: 47 * T, y: 24 * T, block: [[0, 56, 7, 7]] },
       { key: 'chain', x: 1 * T, y: 10 * T + 6, block: [[0, 4, 32, 36]], when: '!stairs_open' },
+      { key: 'tractor', id: 'tractor', x: 56 * T, y: 45 * T + 4, when: 'tractor_here' },
     ],
     warps: [{ x: 1, y: 11, w: 2, h: 2, to: 'first', tx: 3.5, ty: 12.5, dir: 'right', when: 'stairs_open' }],
   },

@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { MAPS, LEGEND, SOLID } from '../data/map';
 import type { MapDef, PropDef } from '../data/map';
 import { TILE_NAMES } from '../data/tiles.gen';
-import { NPCS, SPOTS, intro, objective, exitScript, signed } from '../data/story';
+import { NPCS, SPOTS, intro, objective, exitScript, enterScript, signed } from '../data/story';
 import type { Ctx, Npc, Face, EncounterId, Script } from '../data/story';
 import { PARTY, CAST } from '../data/cast';
 import { state, flag, setFlag, save, hasItem } from '../systems/save';
@@ -262,7 +262,7 @@ export class WorldScene extends Phaser.Scene {
     for (const w of this.def.warps) {
       if (cond(w.when) && fx >= w.x * TILE && fx < (w.x + w.w) * TILE && fy >= w.y * TILE && fy < (w.y + w.h) * TILE) {
         sfx.door();
-        this.run((c) => c.teleport(w.to, w.tx, w.ty, w.dir));
+        this.run(async (c) => { await c.teleport(w.to, w.tx, w.ty, w.dir); const enter = enterScript(w.to); if (enter) await enter(c); });
         return;
       }
     }
@@ -323,7 +323,7 @@ export class WorldScene extends Phaser.Scene {
     this.leader.setVelocity(0, 0);
     try { await script(this.ctx()); }
     finally {
-      this.ui.close();
+      this.ui.close(); this.ui.setBoxTop(false);
       this.cutscene = false;
       this.sync();
       this.refreshHud();
@@ -424,10 +424,14 @@ export class WorldScene extends Phaser.Scene {
       moveProp: async (id, dx, dy, ms) => {
         for (const [p, e] of this.props) if (p.id === id) {
           e.zones.forEach(z => z.destroy()); e.zones = [];
+          if (p.key.startsWith('tractor') && dx) e.img.setFlipX(dx > 0); // tractor art faces left
           await this.tween({ targets: e.img, x: e.img.x + dx, y: e.img.y + dy, duration: ms, onUpdate: () => e.img.setDepth(e.img.y + e.img.height) });
         }
       },
+      swapProp: (id, texture) => { for (const [p, e] of this.props) if (p.id === id) e.img.setTexture(texture); },
+      sound: (name) => sfx[name](),
       sync: () => this.sync(),
+      boxTop: (on) => this.ui.setBoxTop(on),
       credits: () => new Promise<void>(r => {
         this.cameras.main.fadeOut(1500, 27, 20, 32);
         this.cameras.main.once('camerafadeoutcomplete', () => {

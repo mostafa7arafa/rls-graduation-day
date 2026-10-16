@@ -22,10 +22,13 @@ const wait = (ms) => page.waitForTimeout(ms);
 const tap = async (key, times = 1, gap = 120) => { for (let i = 0; i < times; i++) { await page.keyboard.press(key); await wait(gap); } };
 const hold = async (key, ms) => { await page.keyboard.down(key); await wait(ms); await page.keyboard.up(key); };
 // advance dialogue: press Z until no dialogue is open (max n presses)
+// (cutscenes pause between lines, so only stop once the dialogue box has stayed closed for a moment)
 const advance = async (max = 30) => {
-  for (let i = 0; i < max; i++) {
+  let idle = 0;
+  for (let i = 0; i < max * 3 && idle < 3; i++) {
     const busy = await page.evaluate(() => window.game?.scene.getScene('ui')?.busy ?? false);
-    if (!busy) return;
+    if (!busy) { idle++; await wait(400); continue; }
+    idle = 0;
     await tap('z', 1, 60); await wait(450); await tap('z', 1, 60);
   }
 };
@@ -59,7 +62,131 @@ const save = (flags, items, map, x, y, dir = 'down', leader = 'mostafa') =>
 const CH1_DONE = { gate_seen: true, talked_abdel: true, met_abdel: true, hint_perfume: true, hassan_beaten: true, got_sandwich: true };
 const sceneActive = (k) => page.evaluate((k) => window.game.scene.isActive(k), k);
 
+const CH2_DONE = { ...CH1_DONE, met_nasser: true, sig_nasser: true, stairs_open: true };
+const CH3_DONE = { ...CH2_DONE, chapter: 4, met_yasser: true, sig_yasser: true };
+const CH4_DONE = { ...CH3_DONE, chapter: 5, sig_lab: true };
+const CH5_DONE = { ...CH4_DONE, chapter: 6, met_abdelkareem: true, sig_abdelkareem: true };
+const CH6_DONE = { ...CH5_DONE, chapter: 7, met_amr: true, sig_amr: true, finale_started: true };
+// play an encounter until its scene closes: `step` runs each tick (in Node), z advances text otherwise
+const playEncounter = async (key, step, max = 900) => {
+  for (let i = 0; i < max && await sceneActive(key); i++) { if (!(await step())) { await tap('z', 1, 40); await wait(220); } }
+};
+const talkUntilBattle = async (key) => { for (let i = 0; i < 40 && !(await sceneActive(key)); i++) { await tap('z', 1, 60); await wait(350); } await wait(900); };
+
 const scenarios = {
+  async ch3() {
+    await fromSave(save({ ...CH2_DONE, chapter: 2 }, ['key', 'form'], 'ground', 4, 12, 'left'));
+    await hold('ArrowLeft', 700); await wait(2500); await shot('ch3-card');
+    await advance(20); await shot('first-floor-ibrahim');
+    await teleport(5, 4, 'up'); await wait(300); await tap('z'); await wait(1200); await shot('yasser-talk');
+    await talkUntilBattle('spelling'); await shot('spelling-intro');
+    let shotTaken = false;
+    await playEncounter('spelling', async () => {
+      const r = await page.evaluate(() => { const s = window.game.scene.getScene('spelling'); if (!s.playing) return false;
+        const d = s.drops.find(d => d.ok && d.t.y > 90); if (d) s.keeper.x = d.t.x; return true; });
+      if (r && !shotTaken) { await wait(1500); await shot('spelling-rain'); shotTaken = true; }
+      if (r) { await wait(80); return true; } return false;
+    });
+    await wait(800); await shot('after-spelling'); await advance(40); await wait(500);
+    const st = await state(); console.log('ch3:', st.flags.sig_yasser, 'chapter', st.flags.chapter);
+    await shot('ch4-start');
+  },
+  async ch4() {
+    await fromSave(save(CH3_DONE, ['key', 'form'], 'first', 20, 4, 'up'));
+    await teleport(18, 3, 'up'); await wait(300); await tap('z'); await wait(1200); await shot('lab-talk');
+    await talkUntilBattle('lab'); await shot('lab-intro');
+    const rounds = await page.evaluate(() => window.game.scene.getScene('lab').constructor.ROUNDS.map(r => r.want));
+    let lastRi = -1;
+    await playEncounter('lab', async () => {
+      const st = await page.evaluate(() => { const s = window.game.scene.getScene('lab'); return { brewing: s.pick.visible, ri: s.ri, sel: s.sel }; });
+      if (!st.brewing || st.ri === lastRi) return false;
+      lastRi = st.ri;
+      for (const letter of rounds[st.ri].split('')) {
+        const target = ['R', 'B', 'Y', 'W'].indexOf(letter);
+        const cur = await page.evaluate(() => window.game.scene.getScene('lab').sel);
+        await tap('ArrowRight', (target - cur + 6) % 6, 90); await tap('z', 1, 120);
+      }
+      if (st.ri === 0) await shot('lab-brewing');
+      const cur = await page.evaluate(() => window.game.scene.getScene('lab').sel);
+      await tap('ArrowRight', (4 - cur + 6) % 6, 90); await tap('z'); await wait(600);
+      return true;
+    });
+    await wait(800); await shot('after-lab'); await advance(40); await wait(600);
+    const st = await state(); console.log('ch4:', st.flags.sig_lab, 'chapter', st.flags.chapter, 'solo', st.flags.solo);
+    await shot('ch5-start');
+  },
+  async ch5() {
+    await fromSave(save({ ...CH4_DONE, met_abdelkareem: true, sandwiches: 6 }, ['key', 'form'], 'first', 31, 4, 'up'));
+    await tap('z'); await wait(800); await talkUntilBattle('haggle'); await shot('haggle-intro');
+    for (let i = 0; i < 4; i++) { await tap('z', 1, 60); await wait(400); }
+    const pickOption = async (idx) => { // wait for the menu, then pick
+      for (let i = 0; i < 30; i++) { if (await page.evaluate(() => window.game.scene.getScene('haggle').cursor?.visible)) break; await tap('z', 1, 40); await wait(300); }
+      if (idx >= 2) await tap('ArrowDown'); if (idx % 2) await tap('ArrowRight'); await tap('z'); await wait(400);
+    };
+    await pickOption(0); await pickOption(0); await shot('haggle-math');
+    await pickOption(2); await pickOption(2); await shot('haggle-rage');
+    await pickOption(3);
+    for (let i = 0; i < 30; i++) { if (await page.evaluate(() => window.game.scene.getScene('haggle').cursor?.visible)) break; await wait(200); }
+    const price = await page.evaluate(() => window.game.scene.getScene('haggle').price);
+    await tap('ArrowRight', price - 1, 90); await shot('haggle-offer'); await tap('z');
+    await playEncounter('haggle', async () => false, 60);
+    await wait(800); await advance(40); await wait(600);
+    const st = await state(); console.log('ch5: price', price, 'signed', st.flags.sig_abdelkareem, 'sandwiches left', st.flags.sandwiches, 'chapter', st.flags.chapter);
+    await shot('ch6-start');
+  },
+  async ch6() {
+    await fromSave(save(CH5_DONE, ['key', 'form'], 'ground', 28, 24, 'down'));
+    await tap('z'); await wait(1000); await shot('amr-talk'); await talkUntilBattle('rhythm'); await shot('rhythm-intro');
+    // an in-page bot presses each arrow when it reaches the line
+    await page.evaluate(() => { window.__bot = setInterval(() => {
+      const s = window.game.scene.getScene('rhythm'); if (!s || !s.scene.isActive()) return;
+      const now = s.time.now;
+      for (const n of s.notes) if (!n.done && Math.abs(n.at - now) < 45 && !n.sent) {
+        n.sent = true; const key = ['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight'][n.lane];
+        window.dispatchEvent(new KeyboardEvent('keydown', { key })); window.dispatchEvent(new KeyboardEvent('keyup', { key }));
+      }
+    }, 15); });
+    let shotTaken = false;
+    await playEncounter('rhythm', async () => {
+      const playing = await page.evaluate(() => window.game.scene.getScene('rhythm').notes.length > 0);
+      if (playing && !shotTaken) { await shot('rhythm-play'); shotTaken = true; }
+      if (playing) { await wait(300); return true; } return false;
+    });
+    await page.evaluate(() => clearInterval(window.__bot));
+    await wait(800); await advance(40); await wait(600);
+    const st = await state(); console.log('ch6: signed', st.flags.sig_amr, 'chapter', st.flags.chapter);
+    await shot('ch7-start');
+  },
+  async ch7() {
+    await fromSave(save(CH6_DONE, ['key', 'form'], 'ground', 31, 29, 'right'));
+    await tap('z'); await wait(1000); await shot('karim-talk'); await talkUntilBattle('penalty'); await shot('penalty-intro');
+    // in-page bot: dive toward the glint, and lock aim/power at good moments
+    await page.evaluate(() => { window.__bot = setInterval(() => {
+      const s = window.game.scene.getScene('penalty'); if (!s || !s.scene.isActive()) return;
+      const press = (key) => { window.dispatchEvent(new KeyboardEvent('keydown', { key })); window.dispatchEvent(new KeyboardEvent('keyup', { key })); };
+      if (s.glint.visible && !s.__dived) { s.__dived = true; const dx = s.glint.x - 240; press(dx < -5 ? 'ArrowLeft' : dx > 5 ? 'ArrowRight' : 'ArrowUp'); }
+      if (!s.glint.visible && s.__dived && s.kicker.texture.key !== 'karim') s.__dived = false;
+      if (s.reticle.visible && !s.power.visible && !s.__aimed) { const x = s.reticle.x; if (x < 175 || x > 305) { s.__aimed = true; press('z'); } }
+      if (s.power.visible && s.__aimed && s.power.scaleY > 0.5 && s.power.scaleY < 0.7) { s.__aimed = false; press('z'); }
+    }, 15); });
+    let n = 0;
+    await playEncounter('penalty', async () => {
+      const st = await page.evaluate(() => { const s = window.game.scene.getScene('penalty'); return { glint: s.glint.visible, ret: s.reticle.visible }; });
+      if (st.glint || st.ret) { if (n++ < 2) await shot('penalty-' + n); await wait(120); return true; }
+      return false;
+    }, 1500);
+    await page.evaluate(() => clearInterval(window.__bot));
+    await wait(800); await advance(60); await wait(600);
+    const st = await state(); console.log('ch7: stamp', st.flags.sig_stamp);
+    // the finale at the gate
+    await teleport(27, 44, 'down'); await wait(400); await tap('z'); await wait(1500); await shot('finale-gate');
+    for (let i = 0; i < 160 && !(await sceneActive('credits')); i++) {
+      await tap('z', 1, 40); await wait(380);
+      if (i === 30) await shot('finale-car'); if (i === 50) await shot('finale-tractor'); if (i === 70) await shot('finale-ride');
+    }
+    await wait(3000); await shot('credits'); await wait(8000); await shot('credits-2');
+  },
+
   async ch2() {
     await fromSave(save({ ...CH1_DONE, chapter: 2 }, ['key'], 'ground', 21, 36, 'down'));
     await shot('ch2-start');
@@ -106,7 +233,7 @@ const scenarios = {
     await tap('ArrowDown'); await shot('act-menu-down');
     await tap('z'); await pressUntilPhase('dodge');
     await wait(1600); await shot('dodge-early');
-    await battle(() => { window.game.scene.getScene('battle').dignity = 1; }); // next hit = detention
+    await battle(() => { const b = window.game.scene.getScene('battle'); b.dignity = 1; b.hurt(2); }); // force the detention path
     await wait(1800); await shot('dodge-mid');
     await wait(4000); await shot('lose');
     await wait(2000); console.log('battle result:', await page.evaluate(() => window.__battle));

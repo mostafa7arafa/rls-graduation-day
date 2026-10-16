@@ -3,6 +3,7 @@
 import { flag, setFlag, giveItem } from '../../systems/save';
 import { by, chapter } from './types';
 import type { Script, Npc, Spot } from './types';
+import { sandwichTalk } from './ch5';
 
 export function objective(): string {
   if (flag('sig_nasser')) return 'Go upstairs to Mr Yasser (stairs: west corridor).';
@@ -21,6 +22,7 @@ export const start: Script = async (c) => {
 
 export const NPCS: Npc[] = [
   { id: 'nasser', x: 21, y: 37, dir: 'down', when: () => chapter() >= 2, script: async (c) => {
+    if (await sandwichTalk(c, 'nasser')) return;
     if (flag('sig_nasser')) {
       return c.say('nasser', by(c, {
         mostafa: 'Mostafa! Ask your computer about me. It will say: "Sheikh Nasser. Always right."',

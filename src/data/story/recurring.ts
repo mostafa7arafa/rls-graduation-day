@@ -3,6 +3,8 @@
 import { flag, bump } from '../../systems/save';
 import { by, chapter } from './types';
 import type { Script } from './types';
+import { sandwichTalk } from './ch5';
+import { finale, isFinaleReady } from './ch7';
 
 /** the e5la2 taraf (clearance form): one flag per signature, in story order */
 export const FORM = ['sig_nasser', 'sig_yasser', 'sig_lab', 'sig_abdelkareem', 'sig_amr', 'sig_stamp'] as const;
@@ -12,6 +14,7 @@ const cycle = (key: string, lines: string[]) => lines[(bump(key) - 1) % lines.le
 
 export const LATER: Record<'hassan' | 'abdelfattah' | 'habeba' | 'auntie' | 'gate', Script> = {
   hassan: async (c) => {
+    if (await sandwichTalk(c, 'hassan')) return;
     if (chapter() === 2) {
       await c.say('hassan', 'Sheikh Nasser\'s quiz? A word of advice from a survivor:');
       return c.say('hassan', 'Do not be RIGHT. Be AGREEABLE. I learned that in my first week here. In 1987.');
@@ -40,6 +43,7 @@ export const LATER: Record<'hassan' | 'abdelfattah' | 'habeba' | 'auntie' | 'gat
   },
 
   habeba: async (c) => {
+    if (await sandwichTalk(c, 'habeba')) return;
     await c.say('habeba', by(c, {
       mostafa: 'Still here, Mostafa? I thought you three left.',
       hussein: 'Hussein! Did you get locked in again? ...Again again?',
@@ -50,6 +54,7 @@ export const LATER: Record<'hassan' | 'abdelfattah' | 'habeba' | 'auntie' | 'gat
   },
 
   auntie: async (c) => {
+    if (await sandwichTalk(c, 'auntie')) return;
     await c.say('auntie', by(c, {
       mostafa: 'Still here, ya Mostafa? Paperwork? Ya habibi, I have been waiting for MY paperwork since 1998.',
       hussein: 'Still here, Hussein? Good. The 2 pounds are still here too.',
@@ -58,6 +63,7 @@ export const LATER: Record<'hassan' | 'abdelfattah' | 'habeba' | 'auntie' | 'gat
   },
 
   gate: async (c) => {
+    if (isFinaleReady()) return finale(c);
     if (flag('gate_open')) return c.say('narrator', 'The gate is open. The street smells like freedom and ful.');
     await c.say('narrator', '"NO STUDENT LEAVES WITHOUT A SIGNED CLEARANCE FORM (E5LA2 TARAF). — The Administration"');
     const n = signed();

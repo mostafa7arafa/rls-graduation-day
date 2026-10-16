@@ -16,7 +16,6 @@ export const CH1: Record<string, string> = {
   "Sound ON": "الصوت شغال",
   "GRADUATION DAY": "يوم التخرج",
   "Rosetta Language School · Rashid": "مدرسة رشيد للغات · رشيد",
-  "Chapter 1 complete! Sheikh Nasser's QUIZ is coming...": "خلص الفصل الأول! كويز الشيخ ناصر جاي...",
   "CONTINUE": "كمّل",
   "NEW GAME": "لعبة جديدة",
   "by Mostafa, Hussein & Hefny's biggest fan · M mutes": "من أكبر معجب بمصطفى وحسين وحفني · M للصوت",

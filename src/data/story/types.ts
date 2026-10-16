@@ -34,8 +34,12 @@ export interface Ctx {
   /** only this party member walks around (others vanish); null brings everyone back */
   solo(who: Who | null): void;
   moveProp(id: string, dx: number, dy: number, ms: number): Promise<void>;
+  swapProp(id: string, texture: string): void;
+  sound(name: 'honk' | 'engine' | 'whistle' | 'cheer' | 'kick'): void;
   /** re-check every NPC/prop `when` right now (after flags change mid-script) */
   sync(): void;
+  /** dialogue box at the top of the screen while the action happens at the bottom */
+  boxTop(on: boolean): void;
   credits(): Promise<void>;
 }
 export type Script = (c: Ctx) => Promise<void>;

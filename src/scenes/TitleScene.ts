@@ -34,7 +34,7 @@ export class TitleScene extends Phaser.Scene {
     this.tweens.add({ targets: hassan, x: W + 60, duration: 9000, repeat: -1, delay: 1800 });
 
     if (data?.credits) {
-      this.add.text(W / 2, 140, tr('Chapter 1 complete! Sheikh Nasser\'s QUIZ is coming...'), txt(8, { color: '#9fe09a' })).setOrigin(0.5);
+      this.add.text(W / 2, 140, tr('Thanks for playing! The boys made it out.'), txt(8, { color: '#9fe09a' })).setOrigin(0.5);
     }
 
     const canContinue = hasSave() && load() && flag('intro_done') && !flag('game_done');

@@ -17,7 +17,7 @@ export function setLang(l: Lang) { lang = l; try { localStorage.setItem(KEY, l);
 
 /** translate a display string (identity in English) */
 export function tr(s: string): string {
-  if (lang === 'en' || !s) return s;
+  if (lang === 'en' || !s || /[\u0600-\u06FF]/.test(s)) return s;  // already Arabic (e.g. from fmt)
   const t = AR[s];
   if (t !== undefined) return t;
   if (!warned.has(s)) { warned.add(s); console.warn(`[i18n] missing ar: ${JSON.stringify(s)}`); }
@@ -34,3 +34,8 @@ export function txt(size: 8 | 16 = 8, extra: Phaser.Types.GameObjects.Text.TextS
 
 /** a number in the current language's digits (Arabic uses ٠١٢٣٤٥٦٧٨٩) */
 export const num = (n: number) => lang === 'ar' ? String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[+d]) : String(n);
+
+/** translate a template, then fill {placeholders} (numbers get the right digits): fmt('Have {n}.', { n: 3 }) */
+export function fmt(template: string, vars: Record<string, number | string>): string {
+  return tr(template).replace(/\{(\w+)\}/g, (_, k) => typeof vars[k] === 'number' ? num(vars[k] as number) : String(vars[k] ?? ''));
+}

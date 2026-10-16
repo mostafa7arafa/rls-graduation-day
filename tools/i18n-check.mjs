@@ -7,13 +7,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(`${d}/${e.name}`) : e.name.endsWith('.ts') ? [`${d}/${e.name}`] : []);
 const FILES = [...walk('src/data/story'), 'src/data/cast.ts', ...walk('src/scenes')];
 // strings that are code, not text shown to players
-const IGNORE = /^(#[0-9a-f]{3,8}|[a-z][A-Za-z0-9_]*(-[a-z0-9]+)*|[A-Z]+(,[A-Z]+)+|keydown-\w+|\w+\.\w+|assets\/.*|\.\.?\/.*|[!?#.<3]+|\d+px|[▼▶◀♥Z ]+|LANGUAGE: ENGLISH|LANGUAGE|RLS)$/;  // last three: shown as-is on purpose
+const IGNORE = /^(#[0-9a-f]{3,8}|[a-z][A-Za-z0-9_]*(-[a-z0-9]+)*|[A-Z]+(,[A-Z]+)+|keydown-\w+|\w+\.\w+|assets\/.*|\.\.?\/.*|[!?#.<3]+|\d+px|[▼▶◀♥Z ]+|LANGUAGE: ENGLISH|LANGUAGE|RLS|[RBYW]{1,3})$/;  // shown as-is on purpose: the bilingual menu label, the logo, lab paint codes
 
 const used = new Set();
 for (const file of FILES) {
   const src = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
   const visit = (n) => {
     if (ts.isImportDeclaration(n)) return;
+    if (ts.isVariableDeclaration(n) && n.name.getText().startsWith('NO_TR')) return; // deliberately untranslated (e.g. English spelling words)
     if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) {
       const t = n.text;
       const isKey = ts.isPropertyAssignment(n.parent) && n.parent.name === n;

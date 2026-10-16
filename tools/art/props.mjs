@@ -97,3 +97,70 @@ export function chain() { // the stairwell, chained shut "since Hussein's 2016 i
   g.rect(12, 14, 8, 10, '#f4f0e8'); g.rect(13, 15, 6, 8, '#c23b3b'); g.hline(14, 17, 18, '#f4f0e8'); // NO ENTRY sign
   return g.outline(OUT);
 }
+
+// lab glassware: the glass and the liquid are separate images so the game can tint the liquid
+export function flask() {
+  const g = new Grid(14, 20);
+  g.rect(5, 0, 4, 2, '#c8a070'); // cork
+  g.rect(5, 2, 4, 6, '#d8eef8'); g.spans({ 8: [4, 9], 9: [3, 10], 10: [2, 11], 11: [1, 12], 12: [1, 12], 13: [1, 12], 14: [1, 12], 15: [1, 12], 16: [1, 12], 17: [2, 11] }, '#d8eef8');
+  g.vline(6, 3, 6, '#ffffff'); g.set(3, 11, '#ffffff'); g.set(3, 12, '#ffffff');
+  return g.outline(OUT);
+}
+export function flaskLiquid() {
+  const g = new Grid(14, 20);
+  g.spans({ 11: [2, 11], 12: [2, 11], 13: [2, 11], 14: [2, 11], 15: [2, 11], 16: [2, 11], 17: [3, 10] }, '#ffffff');
+  g.hline(3, 10, 11, '#e0e0e0');
+  return g;
+}
+export function beaker() {
+  const g = new Grid(28, 32);
+  g.rect(2, 2, 24, 28, '#d8eef8'); g.hline(0, 27, 2, '#d8eef8'); g.set(0, 1, '#d8eef8');
+  g.rect(4, 4, 20, 24, null);
+  for (const y of [10, 16, 22]) g.hline(20, 23, y, '#9ab0bc');
+  g.vline(5, 4, 26, '#ffffff');
+  return g.outline(OUT);
+}
+export function beakerLiquid() { const g = new Grid(28, 32); g.rect(4, 12, 20, 16, '#ffffff'); g.hline(4, 23, 12, '#e8e8e8'); return g; }
+
+// Hussein's family tractor (faces left). The payoff of the whole game.
+export function tractor() {
+  const g = new Grid(60, 44);
+  drawTractor(g, 0);
+  return g.outline(OUT);
+}
+function drawTractor(g, oy) {
+  const G = '#3e9a4f', GS = '#2c7039', GH = '#5fc06a', R = '#c8323a';
+  g.rect(8, 16 + oy, 30, 12, G); g.hline(8, 37, 16 + oy, GH); g.hline(8, 37, 27 + oy, GS);   // hood
+  g.rect(36, 8 + oy, 16, 20, G); g.hline(36, 51, 8 + oy, GH);                                 // cab body
+  g.rect(38, 0 + oy, 2, 10, '#3a3436'); g.rect(50, 0 + oy, 2, 10, '#3a3436'); g.rect(36, 0 + oy, 18, 2, R); // roof frame
+  g.rect(14, 8 + oy, 3, 9, '#3a3436'); g.rect(13, 6 + oy, 5, 2, '#5a5f6a');                   // exhaust
+  g.rect(5, 18 + oy, 4, 6, '#d8dde3'); g.set(6, 19 + oy, '#f2c94c');                           // grille + light
+  // big rear wheel, small front wheel
+  for (const [cx, cy, r] of [[44, 32 + oy, 11], [14, 36 + oy, 7]]) {
+    for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r) g.set(cx + x, cy + y, '#2a2026');
+    for (let y = -r + 3; y <= r - 3; y++) for (let x = -r + 3; x <= r - 3; x++) if (x * x + y * y <= (r - 3) * (r - 3)) g.set(cx + x, cy + y, '#f2c94c');
+    g.rect(cx - 1, cy - 1, 3, 3, '#7a7f8a');
+    for (let a = 0; a < 360; a += 30) { const t = a * Math.PI / 180; g.set(Math.round(cx + Math.cos(t) * r), Math.round(cy + Math.sin(t) * r), '#4a4044'); }
+  }
+  g.rect(33, 18 + oy, 22, 3, R); // mudguard
+}
+// the same tractor with the three friends riding it (heads + shoulders from their real sprites)
+export function tractorRide(sheets) {
+  const g = new Grid(60, 56);
+  const crop = (name, x0, y0) => { const s = sheets[name]; for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const c = s.get(x, y); if (c) g.set(x0 + x, y0 + y, c); } };
+  drawTractor(g, 12);
+  crop('hefny', 17, 10); crop('mostafa', 27, 9); crop('hussein', 38, 8); // Hussein drives, obviously
+  return g.outline(OUT);
+}
+
+export function ball() {
+  const g = new Grid(10, 10);
+  for (let y = 0; y < 10; y++) for (let x = 0; x < 10; x++) if ((x - 4.5) ** 2 + (y - 4.5) ** 2 <= 20) g.set(x, y, '#f4f0e8');
+  g.rect(4, 4, 2, 2, '#1b1420'); g.set(1, 4, '#1b1420'); g.set(8, 5, '#1b1420'); g.set(4, 1, '#1b1420'); g.set(5, 8, '#1b1420');
+  return g.outline(OUT);
+}
+export function arrow() { // rhythm-game arrow, pointing right
+  const g = new Grid(14, 14);
+  g.rect(1, 5, 7, 4, '#f4f0e8'); g.spans({ 1: [7, 8], 2: [7, 9], 3: [7, 10], 4: [7, 11], 5: [7, 12], 6: [7, 12], 7: [7, 12], 8: [7, 12], 9: [7, 11], 10: [7, 10], 11: [7, 9], 12: [7, 8] }, '#f4f0e8');
+  return g.outline(OUT);
+}

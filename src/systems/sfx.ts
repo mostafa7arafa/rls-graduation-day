@@ -69,6 +69,12 @@ export const sfx = {
   bell: () => { for (let i = 0; i < 26; i++) { tone(1180, 0.05, 'square', 0.035, undefined, i * 0.06); tone(1420, 0.05, 'square', 0.02, undefined, i * 0.06 + 0.03); } },
   sting: () => [330, 311, 294, 277].forEach((f, i) => tone(f, 0.25, 'sawtooth', 0.05, undefined, i * 0.22)),
   win: () => [523, 659, 784, 659, 784, 1046].forEach((f, i) => tone(f, 0.16, 'square', 0.05, undefined, i * 0.12)),
+  honk: () => { tone(392, 0.18, 'square', 0.06); tone(494, 0.18, 'square', 0.05); tone(392, 0.3, 'square', 0.06, undefined, 0.25); tone(494, 0.3, 'square', 0.05, undefined, 0.25); },
+  // a tractor: low chugging pulses
+  engine: () => { for (let i = 0; i < 14; i++) { tone(55 + (i % 2) * 6, 0.09, 'sawtooth', 0.07, 45, i * 0.11); noise(0.05, 0.03, i * 0.11, undefined, 200); } },
+  whistle: () => tone(2400, 0.35, 'square', 0.04, undefined, 0, undefined, 30),
+  cheer: () => { noise(1.2, 0.06, 0, undefined, 900); [523, 659, 784].forEach((f, i) => tone(f, 0.25, 'triangle', 0.03, undefined, 0.1 + i * 0.1)); },
+  kick: () => { tone(160, 0.08, 'sine', 0.2, 60); noise(0.04, 0.06, 0, undefined, 1500); },
 
   /** a wordless voice reaction in the speaker's own pitch (gasp, aww, rage growl...) */
   react: (p: number, kind: Reaction) => {

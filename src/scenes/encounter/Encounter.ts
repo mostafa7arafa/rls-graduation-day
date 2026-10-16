@@ -43,7 +43,7 @@ export abstract class Encounter extends Phaser.Scene {
   }
 
   /** call first in create(): background colour, music, and the shared widgets */
-  protected setup(bg: string, track: TrackId, showDignity = true) {
+  protected setup(bg: string, track: TrackId, showDignity = true, who: readonly string[] = PARTY) {
     this.ar = isAr();
     this.cameras.main.setBackgroundColor(bg).fadeIn(250);
     sfx.sting(); music.play(track);
@@ -52,7 +52,7 @@ export abstract class Encounter extends Phaser.Scene {
     for (let i = 0; i < 8; i++) this.cells.push(this.add.text(0, 0, '', txt(8, { color: '#f4f0e8' })).setOrigin(this.ar ? 1 : 0, 0).setDepth(6).setVisible(false));
     this.cursor = this.add.image(0, 0, 'soul').setDepth(7).setVisible(false);
     if (showDignity) {
-      PARTY.forEach((p, i) => { this.faces[p] = this.add.image(26 + i * 20, 212, `${p}_face`).setScale(1.1); });
+      who.forEach((p, i) => { this.faces[p] = this.add.image(26 + i * 20, 212, `${p}_face`).setScale(1.1); });
       this.add.text(88, 212, tr('DIGNITY'), txt(8, { color: '#f4f0e8', rtl: false })).setOrigin(0, 0.5);
       this.add.rectangle(150, 212, 100, 8, 0x5a1a24).setOrigin(0, 0.5);
       this.hpBar = this.add.rectangle(150, 212, 100, 8, 0xf2c94c).setOrigin(0, 0.5);
@@ -155,7 +155,7 @@ export abstract class Encounter extends Phaser.Scene {
   /** lose dignity; a random friend yelps. Returns true when it hits zero. */
   protected hurt(n: number, who?: string): boolean {
     this.dignity -= n; sfx.hit(); this.cameras.main.shake(140, 0.01); this.refreshDignity();
-    const w = who ?? Phaser.Utils.Array.GetRandom([...PARTY]);
+    const w = who ?? Phaser.Utils.Array.GetRandom(Object.keys(this.faces).length ? Object.keys(this.faces) : [...PARTY]);
     this.time.delayedCall(90, () => sfx.react(CAST[w].voice, 'ow'));
     if (this.faces[w]) this.tweens.add({ targets: this.faces[w], angle: { from: -15, to: 0 }, duration: 250 });
     return this.dignity <= 0;
@@ -174,12 +174,12 @@ export abstract class Encounter extends Phaser.Scene {
     await this.say(lines);
     this.close(true);
   }
-  protected async detention(lines: string[] = []) {
+  protected async detention(lines: string[] = [], word = 'DETENTION.') {
     if (this.over) return; this.over = true;
     this.onKey(null);
     if (lines.length) await this.say(lines);
     sfx.sting();
-    const big = this.add.text(W / 2, 160, tr('DETENTION.'), txt(16, { color: '#ff4040' })).setOrigin(0.5).setDepth(20);
+    const big = this.add.text(W / 2, 160, tr(word), txt(16, { color: '#ff4040' })).setOrigin(0.5).setDepth(20);
     this.tweens.add({ targets: big, scale: { from: 3, to: 1 }, duration: 400, ease: 'Back.out' });
     await this.wait(1600);
     this.close(false);

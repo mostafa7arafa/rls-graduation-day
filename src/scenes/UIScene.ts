@@ -19,6 +19,7 @@ export class UIScene extends Phaser.Scene {
   private hudFace!: Phaser.GameObjects.Image;
   private hudName!: Phaser.GameObjects.Text;
   private objX = 32;
+  private boxY = 0;   // container offset: 0 = bottom of the screen, negative = moved to the top
   private form!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private card?: Phaser.GameObjects.Container;
@@ -94,8 +95,8 @@ export class UIScene extends Phaser.Scene {
     this.nameTag.setX(ar ? W - 22 : 22);
     this.nameTag.setVisible(!!name);
     if (!this.box.visible) {
-      this.box.setVisible(true).setAlpha(0).setY(8);
-      this.tweens.add({ targets: this.box, alpha: 1, y: 0, duration: 120, ease: 'Quad.out' });
+      this.box.setVisible(true).setAlpha(0).setY(this.boxY + 8);
+      this.tweens.add({ targets: this.box, alpha: 1, y: this.boxY, duration: 120, ease: 'Quad.out' });
     }
   }
 
@@ -144,6 +145,9 @@ export class UIScene extends Phaser.Scene {
       this.confirmCb = () => { this.navCb = null; this.confirmCb = null; sfx.select(); resolve(sel); };
     });
   }
+
+  /** put the dialogue box at the top of the screen (for cutscenes happening at the bottom of the map) */
+  setBoxTop(top: boolean) { this.boxY = top ? -(H - 78 - 44) : 0; this.box.setY(this.boxY); }
 
   setForm(n: number) {
     // the controls hint gives way to the form counter (by then everyone knows the controls)
