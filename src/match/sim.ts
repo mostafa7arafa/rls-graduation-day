@@ -36,17 +36,29 @@ export interface SlotInput { mx: number; my: number; pass: boolean; shoot: boole
 export const NO_INPUT: SlotInput = { mx: 0, my: 0, pass: false, shoot: false, lob: false, through: false, sprint: false, swap: false };
 export interface Control { slot: number; team: Side; role: 'field' | 'keeper' }
 export interface MatchConfig { home: TeamDef; away: TeamDef; controls: Control[]; halfSeconds: number; seed?: number; knockout?: boolean }
-export type EventType = 'kick' | 'pass' | 'shot' | 'goal' | 'save' | 'catch' | 'post' | 'wall' | 'out' | 'whistle' | 'tackle' | 'miss' | 'half' | 'full' | 'switch' | 'beaten' | 'special' | 'pens' | 'pen';
+export type EventType = 'kick' | 'pass' | 'shot' | 'goal' | 'save' | 'catch' | 'post' | 'wall' | 'out' | 'whistle' | 'tackle' | 'miss' | 'half' | 'full' | 'switch' | 'beaten' | 'special' | 'pens' | 'pen' | 'foul' | 'card' | 'lost';
 export interface MatchEvent { t: EventType; team?: Side; who?: string; slot?: number; kind?: string }
 
 /** signature moves: when one fires, the match freezes for an anime cutscene, then the AI plays it out */
-export type SpecialKind = 'shot' | 'dribble' | 'save';
-export const SPECIALS: Record<string, { kind: SpecialKind; name: string }> = {
-  karim: { kind: 'shot', name: 'THUNDER SHOT' },
-  abdallah: { kind: 'shot', name: 'LEFT-FOOT ROCKET' },
-  nasser: { kind: 'shot', name: 'GALABEYA CANNON' },
-  saif: { kind: 'dribble', name: 'MESSI MODE' },
-  hussein: { kind: 'save', name: 'THE HIGH DAM' },
+export type SpecialKind = 'shot' | 'dribble' | 'save' | 'pass' | 'tackle';
+/** `line` = the inner monologue shown in the cutscene (Blue Lock style); `finish` = how a dribble ends */
+export interface Special { kind: SpecialKind; name: string; line: string; finish?: 'pass' | 'shot'; boost?: number }
+export const SPECIALS: Record<string, Special> = {
+  // us
+  karim: { kind: 'shot', name: 'THUNDER SHOT', line: 'Top scorer. Every single year.' },
+  hussein: { kind: 'save', name: 'THE HIGH DAM', line: 'My knee can wait.' },
+  warshan: { kind: 'tackle', name: 'CLEAN SLIDE', line: 'Sorry. Excuse me. Thank you.' },
+  elrediny: { kind: 'dribble', name: 'CURLY ROULETTE', line: 'Spin. Spin again. Nobody follows.', finish: 'shot', boost: 1.5 },
+  shazly: { kind: 'pass', name: 'NO-LOOK PASS', line: 'Relax. I saw you. I just did not look.' },
+  // them
+  abdallah: { kind: 'shot', name: 'LEFT-FOOT ROCKET', line: 'You will only see it in the replay.' },
+  saif: { kind: 'dribble', name: 'MESSI MODE', line: 'Brother or not. I do not lose.', finish: 'pass', boost: 2.4 },
+  nasser: { kind: 'shot', name: 'GALABEYA CANNON', line: 'Bismillah.' },
+  amrk: { kind: 'pass', name: 'MAGIC PASS', line: 'The ball goes where I look. I look everywhere.' },
+  ibrahim: { kind: 'dribble', name: 'THE SHOWBOAT', line: 'Are the teachers watching? They are watching.', finish: 'shot', boost: 1.6 },
+  rezk: { kind: 'save', name: 'A NORMAL SAVE', line: 'Normally.' },
+  bodda: { kind: 'tackle', name: 'THE BULLDOZER', line: 'Ball. Legs. Same thing.' },
+  ziad: { kind: 'pass', name: 'TWIN SWITCH', line: 'Am I Ziad? Am I Zeyad? Yes.' },
 };
 const PEN_Y = 96;              // the penalty spot: 6 m out
 type PassKind = 'ground' | 'lob' | 'through';
@@ -106,6 +118,9 @@ export class Match {
   /** penalty shootout (knockout draws) */
   pens: { kicks: { team: Side; scored: boolean }[]; state: 'aim' | 'flight' | 'after'; t: number; taker: Player | null } | null = null;
   pensWinner: Side | -1 = -1;
+  /** the coach's half-time call: -1 defend, 0 balanced, 1 attack (shifts pressing and shooting) */
+  tactic: [number, number] = [0, 0];
+  fouls = new Map<Player, number>();
 
   constructor(cfg: MatchConfig) {
     this.teams = [cfg.home, cfg.away];
@@ -141,6 +156,7 @@ export class Match {
   private other = (team: Side): Side => team === 0 ? 1 : 0;
   private emit(t: EventType, extra: Omit<MatchEvent, 't'> = {}) { this.events.push({ t, ...extra }); }
   private speedOf(p: Player) { return BASE_SPEED * (0.7 + 0.45 * p.def.speed); }
+  private aggr(team: Side) { return clamp(this.teams[team].ai.aggression + 0.15 * this.tactic[team], 0.2, 1); }
   /** which player a human slot is driving right now */
   controlled(slot: number) { return this.players.find(p => p.slot === slot) ?? null; }
   /** the keeper of `team` has the ball in his hands */
@@ -402,7 +418,7 @@ export class Match {
         const d = dist(p, carrier);
         const off = d > 22 ? 12 : 4;
         p.tx = carrier.x + ux / ul * off; p.ty = carrier.y + uy / ul * off; p.urgency = d > 40 ? 1.2 : 0.95;
-        if (d < 12 && p.tackleCd <= 0 && decide && this.rand() < (0.15 + 0.25 * t.ai.aggression) * t.ai.reaction * 5) this.tackle(p);
+        if (d < 12 && p.tackleCd <= 0 && decide && this.rand() < (0.15 + 0.25 * this.aggr(p.team)) * t.ai.reaction * 5) this.tackle(p);
       } else {
         const tt = Math.min(0.5, dist(p, b) / 200);
         p.tx = b.x + b.vx * tt; p.ty = b.y + b.vy * tt; p.urgency = 1.2;
@@ -481,9 +497,15 @@ export class Match {
     const dg = dist(p, goal), opp = this.side(this.other(p.team));
     const press = this.nearestDist(opp.filter(o => !o.keeper), p);
     // a signature dribble: in midfield, with defenders in front of him
-    if (SPECIALS[p.def.id]?.kind === 'dribble' && dg > 110 && this.canSpecial(p)) {
+    const sk = SPECIALS[p.def.id]?.kind;
+    if (sk === 'dribble' && dg > 110 && this.canSpecial(p)) {
       const ahead = opp.filter(o => !o.keeper && Math.abs(o.y - goal.y) < Math.abs(p.y - goal.y)).length;
       if (ahead >= 2 && press < 40 && this.rand() < 0.5) return this.special(p, 'dribble', 0);
+    }
+    // a signature pass: from midfield, to a teammate further up
+    if (sk === 'pass' && dg > 100 && dg < 260 && this.canSpecial(p) && this.rand() < 0.35) {
+      const ahead = this.field(p.team).some(m => m !== p && Math.abs(m.y - goal.y) < Math.abs(p.y - goal.y) - 30);
+      if (ahead) return this.special(p, 'pass', 0);
     }
     // shoot?
     const range = 70 + p.def.shot * 50;
@@ -492,7 +514,7 @@ export class Match {
       const aimX = k.x < CW / 2 ? GOAL_X1 - 6 : GOAL_X0 + 6;   // the corner the keeper isn't covering
       const clear = opp.every(o => o.keeper || segDist(o.x, o.y, p.x, p.y, aimX, goal.y) > 9);
       // chance per decision, scaled by how often this team decides, so it means "per second"
-      const perSec = clear ? 0.5 + t.ai.aggression * 0.5 : dg < 45 ? 0.3 : 0;
+      const perSec = clear ? 0.5 + this.aggr(p.team) * 0.5 : dg < 45 ? 0.3 : 0;
       if (this.rand() < perSec * t.ai.reaction * 2) {
         this.shoot(p, clamp(0.45 + this.rand() * 0.5, 0, 1), (aimX - CW / 2) / ((GOAL_X1 - GOAL_X0) / 2));
         return;
@@ -631,7 +653,7 @@ export class Match {
 
   // ───────────────────────── signature moves + cutscenes
   private canSpecial(p: Player) {
-    return !!SPECIALS[p.def.id] && this.phase === 'play' && (this.used.get(p) ?? 0) < 2 && this.time - this.lastSpecial > 25;
+    return !!SPECIALS[p.def.id] && this.phase === 'play' && (this.used.get(p) ?? 0) < 2 && this.time - this.lastSpecial > 18;
   }
   private special(p: Player, kind: SpecialKind, aim: number) {
     this.used.set(p, (this.used.get(p) ?? 0) + 1); this.lastSpecial = this.time;
@@ -646,7 +668,20 @@ export class Match {
     if (s.kind === 'shot' && this.ball.owner === p) {
       const k = this.gk(this.other(p.team));
       this.releasing = true; this.shoot(p, 1, k.x > CW / 2 ? -0.85 : 0.85); this.releasing = false;
-    } else if (s.kind === 'dribble') p.boostT = 2.4;
+    } else if (s.kind === 'dribble') p.boostT = SPECIALS[p.def.id].boost ?? 2.4;
+    else if (s.kind === 'pass' && this.ball.owner === p) {
+      // the defence freezes, watching it go: the pass can't be cut out
+      const goal = { x: CW / 2, y: this.oppGoalY(p.team) };
+      const m = this.field(p.team).filter(q => q !== p).sort((a, b) => dist(a, goal) - dist(b, goal))[0];
+      if (m) {
+        for (const o of this.field(this.other(p.team))) o.stun = Math.max(o.stun, 0.7);
+        m.x = clamp(m.x + (goal.x - m.x) * 0.2, 16, CW - 16);
+        this.passTo(p, m, 'through');
+      }
+    } else if (s.kind === 'tackle') {
+      const o = this.ball.owner;
+      if (o && o.team !== p.team && !o.keeper) { o.stun = 0.9; this.ball.owner = p; this.ball.last = p; this.ball.held = 0; this.emit('tackle', { team: p.team }); }
+    }
   }
   /** Messi mode: straight at goal, nobody can take it, defenders' ankles go; then lay it on for a teammate */
   private boostDribble(p: Player) {
@@ -654,8 +689,8 @@ export class Match {
     for (const o of this.field(this.other(p.team))) if (dist(o, p) < 14 && o.stun <= 0) { o.stun = 0.5; this.emit('beaten', { team: o.team }); }
     if (dist(p, goal) < 85 || p.boostT < 0.1) {
       p.boostT = 0;
-      const t = this.bestPass(p);
-      if (t) this.passTo(p, t, 'ground'); else this.shoot(p, 0.8, 0);
+      const t = SPECIALS[p.def.id]?.finish === 'shot' && dist(p, goal) < 150 ? null : this.bestPass(p);
+      if (t) this.passTo(p, t, 'ground'); else { this.releasing = true; this.shoot(p, 0.85, 0); this.releasing = false; }
       return;
     }
     const n = this.nearest(this.field(this.other(p.team)), p);
@@ -669,6 +704,12 @@ export class Match {
     this.phase = 'pens'; this.phaseT = 0;
     this.pens = { kicks: [], state: 'after', t: 0, taker: null };
     this.nextKick();
+  }
+  /** the shootout was played on its own screen (MatchScene's front view): take its kicks as the result */
+  finishPens(kicks: { team: Side; scored: boolean }[]) {
+    this.pens = { kicks, state: 'after', t: 0, taker: null };
+    const [a, b] = this.pensScore();
+    this.pensWinner = a > b ? 0 : 1; this.phase = 'full'; this.phaseT = 0; this.emit('full');
   }
   pensScore(): [number, number] {
     const k = this.pens?.kicks ?? [];
@@ -735,15 +776,30 @@ export class Match {
     const o = this.ball.owner;
     if (!o || o.team === p.team || o.keeper || dist(p, o) > 15) { p.stun = 0.15; return; }   // whiffed
     if (o.boostT > 0) { p.stun = 0.5; this.emit('beaten', { team: p.team }); return; }      // Messi mode: no chance
+    // a signature tackle: freeze, cutscene, then he simply takes it
+    if (p.slot < 0 && SPECIALS[p.def.id]?.kind === 'tackle' && this.canSpecial(p) && this.rand() < 0.4) return this.special(p, 'tackle', 0);
     // from in front (goal-side) is easier than chasing from behind
-    const gy = this.ownGoalY(p.team), front = Math.abs(p.y - gy) < Math.abs(o.y - gy) ? 0.12 : -0.08;
+    const gy = this.ownGoalY(p.team), behind = Math.abs(p.y - gy) >= Math.abs(o.y - gy), front = behind ? -0.08 : 0.12;
     const chance = 0.3 + 0.45 * p.def.tackle - 0.35 * o.def.dribble + front;
     if (this.rand() < chance) {
       const a = Math.atan2(o.y - p.y, o.x - p.x) + (this.rand() - 0.5);
       this.kick(o, Math.cos(a) * 70, Math.sin(a) * 70, 0, 'tackle');
       this.ball.last = p; o.stun = 0.45;
       this.events[this.events.length - 1].team = p.team;
-    } else { p.stun = 0.35; p.tackleCd = 0.9; this.emit('beaten', { team: p.team }); }   // beaten: that's how you dribble past
+      this.emit('lost', { team: o.team, who: o.def.id });
+    } else if (behind && this.phase === 'play' && this.rand() < 0.01 + 0.04 * this.aggr(p.team)) this.foul(p, o);   // through the back of his legs
+    else { p.stun = 0.35; p.tackleCd = 0.9; this.emit('beaten', { team: p.team }); }   // beaten: that's how you dribble past
+  }
+  /** a foul: Mr Amr blows, a free kick where it happened. The second one is a yellow card. */
+  private foul(p: Player, o: Player) {
+    const n = (this.fouls.get(p) ?? 0) + 1; this.fouls.set(p, n);
+    p.stun = 0.6; o.stun = 0;
+    this.emit('foul', { team: p.team, who: p.def.id });
+    if (n === 2) this.emit('card', { team: p.team, who: p.def.id });
+    this.ball.x = clamp(o.x, 10, CW - 10); this.ball.y = clamp(o.y, 14, CL - 14);
+    Object.assign(this.ball, { z: 0, vx: 0, vy: 0, vz: 0 });
+    o.x = this.ball.x; o.y = this.ball.y - this.fwd(o.team) * 4;
+    this.restart(o);
   }
   /** a dive: a burst towards (dx,dy). AI keepers pass `need` (px) so they stop at the ball, not past it */
   private startDive(k: Player, dx: number, dy: number, need?: number) {

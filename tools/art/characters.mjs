@@ -1,7 +1,7 @@
 // Character sprites: 16x24 frames, 9 per sheet:
 //   0-2 down (idle, stepA, stepB) · 3-5 up · 6-8 side (facing LEFT; flip in-game for right)
 // Each character = palette + hair style + face/body extras. Outline is added automatically.
-import { Grid } from '../pix.mjs';
+import { Grid, hex } from '../pix.mjs';
 
 const OUT = '#1b1420';
 
@@ -149,6 +149,28 @@ export const CAST = {
     shirt: '#5a6a8a', shirtS: '#42506a', pants: '#3f3a36', pantsS: '#2c2826', shoe: '#5a3a26', shoeS: '#3d2516',
     mouth: '#7a3b33', cap: '#1b1420', capS: '#3a3436', glass: '#1b1420', beard: '#5a4a44', hairStyle: 'beret', face: 'mahmoud', body: 'normal', extra: 'camera',
   },
+  // ── Season 2 (football). Real people; looks from the author's descriptions.
+  elrediny: { // Ahmed Elrediny: short tight black curls, thin and tall, round freckled face. Our red kit.
+    skin: '#e2ae88', skinS: '#c28e6a', hair: '#141016', hairH: '#3a3440', eye: '#1b1420',
+    shirt: '#c8323a', shirtS: '#9c262c', pants: '#f4f0e8', pantsS: '#c4c0b8', sock: '#c8323a', sockS: '#9c262c', shoe: '#2a2026', shoeS: '#1b1420',
+    mouth: '#7a3b33', freckle: '#b87a58', hairStyle: 'tightCurls', face: 'freckles', head: 'round', body: 'thin', kit: true, extra: 'none',
+  },
+  amrk: { // Mr Amr Karate: a square man. Square head, square body, goatee + moustache, black belt. NOT gym Mr Amr.
+    skin: '#c48a64', skinS: '#a26b48', hair: '#141016', hairH: '#3a3440', eye: '#1b1420',
+    shirt: '#f4f4f0', shirtS: '#cfd2d6', pants: '#1f2033', pantsS: '#141420', shoe: '#2a2026', shoeS: '#1b1420',
+    mouth: '#5a2a24', beard: '#141016', belt: '#1b1420',
+    hairStyle: 'flat', face: 'goatee', head: 'square', body: 'square', extra: 'belt',
+  },
+  saif: { // Saif: Mostafa's little brother, four years younger, small. The Messi of the school. Captain.
+    skin: '#c98d63', skinS: '#a86d4c', hair: '#2a1d1a', hairH: '#4a3530', eye: '#1b1420',
+    shirt: '#7fd0f0', shirtS: '#4fa8d0', pants: '#f4f0e8', pantsS: '#c4c0b8', sock: '#7fd0f0', sockS: '#4fa8d0', shoe: '#f2c94c', shoeS: '#c4a030',
+    mouth: '#7a3b33', band: '#f2c94c', hairStyle: 'fringe', face: 'fierce', body: 'normal', short: true, kit: true, extra: 'armband',
+  },
+  abdallah: { // Abdallah: 1st Secondary, the left foot. One gold boot (the left one), flat-top hair.
+    skin: '#b47a54', skinS: '#925e3c', hair: '#141016', hairH: '#3a3440', eye: '#1b1420',
+    shirt: '#3a7bd5', shirtS: '#2a5aa8', pants: '#1f2540', pantsS: '#141a30', sock: '#3a7bd5', sockS: '#2a5aa8', shoe: '#2a2026', shoeS: '#1b1420',
+    mouth: '#5a2a24', gold: '#f2c94c', hairStyle: 'flat', face: 'focused', body: 'normal', kit: true, extra: 'goldboot',
+  },
 };
 
 // background people: generated variations (students, parents, staff) — they fill the school
@@ -180,6 +202,43 @@ const EXTRAS = {
     mouth: '#5a2a24', stache: '#2a2026', hairStyle: 'side', face: 'dad', body: 'normal', extra: 'none', item: 'broom' },
 };
 Object.assign(CAST, EXTRAS);
+
+// ── Season 2 football kits: every grade has its own colour. Our team (2nd Secondary, red) wears
+// red versions of their own sprites; nobody else may share their look. Opponents are generated.
+const KIT = { // shirt, shade, shorts, shorts shade
+  rls: ['#c8323a', '#9c262c', '#f4f0e8', '#c4c0b8'],
+  sec1: ['#3a7bd5', '#2a5aa8', '#1f2540', '#141a30'],
+  prep1: ['#7fd0f0', '#4fa8d0', '#f4f0e8', '#c4c0b8'],
+  prep2: ['#3fa34d', '#2c7a38', '#f4f0e8', '#c4c0b8'],
+  prep3: ['#3a3a46', '#2a2a34', '#2a2a34', '#1b1b24'],
+  prim5: ['#f2c94c', '#c4a030', '#1f2540', '#141a30'],
+  prim6: ['#f08a3c', '#c86a24', '#f4f0e8', '#c4c0b8'],
+};
+const kitOf = (t) => { const [shirt, shirtS, pants, pantsS] = KIT[t]; return { shirt, shirtS, pants, pantsS, sock: shirt, sockS: shirtS, kit: true }; };
+const GK = { shirt: '#6a6a74', shirtS: '#4a4a54', glove: '#f4f0e8', gloveS: '#c4c0b8', extra: 'gloves' }; // keepers: grey jersey + gloves
+// ours: their own faces and hair, in red (Hussein keeps his orange keeper shirt and his gloves)
+for (const id of ['warshan', 'karim', 'shazly']) CAST[`fb_${id}`] = { ...CAST[id], ...kitOf('rls'), extra: id === 'karim' ? 'chain' : id === 'warshan' ? 'jersey' : 'none' };
+CAST.fb_hussein = { ...CAST.hussein, pants: '#1b1420', pantsS: '#141016', sock: '#e8742a', sockS: '#b5551a', kit: true };
+// opponents: generated players. Hair/face mixes that none of our players use.
+const OPP_HAIR = ['buzz', 'side', 'flat', 'fringe', 'quiff', 'spiky'];
+const OPP_FACE = ['hefny', 'aly', 'chill', 'smug', 'focused', 'dad0'];
+function kitPlayer(seed, team, { kid = false, keeper = false } = {}) {
+  const pick = (arr, k) => arr[(Math.imul(seed * 37 + k, 2654435761) >>> 0) % arr.length];
+  const [skin, skinS] = pick(SKINS, 1), [hair, hairH] = pick(HAIRS, 2);
+  return { skin, skinS, hair, hairH, eye: '#1b1420', mouth: '#7a3b33', shoe: '#2a2026', shoeS: '#1b1420', ...kitOf(team), ...(keeper ? GK : { extra: 'none' }),
+    hairStyle: pick(OPP_HAIR, 3), face: pick(OPP_FACE, 4).replace('dad0', 'gentle'), body: 'normal', short: kid };
+}
+const kidTeam = (t) => t.startsWith('prep') || t.startsWith('prim');
+let seed = 100;
+for (const t of ['sec1', 'prep1', 'prep2', 'prep3', 'prim5', 'prim6']) {
+  CAST[`${t}_gk`] = kitPlayer(seed++, t, { kid: kidTeam(t), keeper: true });
+  for (const i of [1, 2, 3]) CAST[`${t}_${i}`] = kitPlayer(seed++, t, { kid: kidTeam(t) });
+}
+// the twins: one sprite, two players. Nobody can tell them apart.
+CAST.twin = { ...kitPlayer(7, 'prep2', { kid: true }), hairStyle: 'side', face: 'smug' };
+CAST.tito = { ...kitPlayer(201, 'prep3', { kid: true }), hairStyle: 'spiky', face: 'fierce' };
+CAST.shika = { ...kitPlayer(202, 'prep3', { kid: true }), hairStyle: 'quiff', face: 'smug' };
+CAST.bodda = { ...kitPlayer(203, 'prep3', { kid: true }), hairStyle: 'buzz', face: 'aly', body: 'big', head: 'round' };
 
 const HEAD = { 2: [5, 10], 3: [4, 11], 4: [3, 12], 5: [3, 12], 6: [3, 12], 7: [3, 12], 8: [3, 12], 9: [3, 12], 10: [4, 11], 11: [5, 10] };
 
@@ -316,6 +375,30 @@ function hair(g, c, dir) {
       else if (dir === 'up') g.spans({ 3: [3, 12], 4: [3, 12], 5: [3, 12], 6: [4, 11] }, h);
       else g.spans({ 3: [8, 12], 4: [10, 12], 5: [11, 12] }, h);
       break;
+    case 'tightCurls': { // short, tight black curls close to the head (Elrediny)
+      const tex = (x, y) => ((x + y) % 2 === 0 ? H : h);
+      const paint = (m) => Object.entries(m).forEach(([y, [a, b]]) => { for (let x = a; x <= b; x++) g.set(x, +y, tex(x, +y)); });
+      if (dir === 'down') { paint({ 1: [4, 11], 2: [2, 13], 3: [2, 13], 4: [2, 3] }); paint({ 4: [12, 13] }); g.set(5, 4, h); g.set(8, 4, h); g.set(10, 4, h); }
+      else if (dir === 'up') paint({ 1: [4, 11], 2: [2, 13], 3: [2, 13], 4: [2, 13], 5: [2, 13], 6: [2, 13], 7: [3, 12], 8: [3, 12] });
+      else paint({ 1: [4, 11], 2: [2, 13], 3: [3, 13], 4: [6, 13], 5: [10, 13], 6: [11, 13] });
+      break;
+    }
+    case 'flat': // flat-top: short sides, a flat square top
+      if (dir === 'down') { g.spans({ 1: [3, 12], 2: [3, 12], 3: [3, 12] }, h); g.hline(3, 12, 1, H); g.set(3, 4, h); g.set(12, 4, h); }
+      else if (dir === 'up') { g.spans({ 1: [3, 12], 2: [3, 12], 3: [3, 12], 4: [3, 12], 5: [3, 12], 6: [3, 12], 7: [4, 11] }, h); g.hline(3, 12, 1, H); }
+      else { g.spans({ 1: [3, 12], 2: [3, 12], 3: [4, 12], 4: [9, 12], 5: [10, 12] }, h); g.hline(3, 12, 1, H); }
+      break;
+    case 'fringe': // a fringe swept down over the forehead (Saif, and a few kids)
+      if (dir === 'down') { g.spans({ 2: [4, 11], 3: [3, 12], 4: [3, 10] }, h); g.set(3, 5, h); g.set(12, 4, h); g.hline(5, 9, 2, H); g.set(4, 5, h); }
+      else if (dir === 'up') { g.spans({ 2: [4, 11], 3: [3, 12], 4: [3, 12], 5: [3, 12], 6: [3, 12], 7: [3, 12], 8: [4, 11] }, h); g.hline(5, 9, 3, H); }
+      else { g.spans({ 2: [4, 11], 3: [2, 12], 4: [2, 12], 5: [9, 12], 6: [11, 12] }, h); g.hline(4, 8, 2, H); }
+      break;
+    case 'spiky': // gelled spikes
+      [4, 6, 8, 10, 12].forEach(x => g.set(x, 0, h));
+      if (dir === 'down') { g.spans({ 1: [3, 12], 2: [3, 12], 3: [3, 12] }, h); g.set(3, 4, h); g.set(12, 4, h); [5, 9].forEach(x => g.set(x, 1, H)); }
+      else if (dir === 'up') { g.spans({ 1: [3, 12], 2: [3, 12], 3: [3, 12], 4: [3, 12], 5: [3, 12], 6: [3, 12], 7: [4, 11] }, h); }
+      else { g.spans({ 1: [3, 12], 2: [3, 12], 3: [4, 12], 4: [9, 12], 5: [10, 12] }, h); g.set(2, 1, h); }
+      break;
     case 'scarf': {
       const wrap = { 1: [4, 11], 2: [3, 12], 3: [2, 13], 4: [2, 13], 5: [2, 3], 6: [2, 3], 7: [2, 3], 8: [2, 3], 9: [2, 4], 10: [3, 4], 11: [3, 5], 12: [4, 11] };
       const wrapR = { 5: [12, 13], 6: [12, 13], 7: [12, 13], 8: [12, 13], 9: [11, 13], 10: [11, 12], 11: [10, 12] };
@@ -436,6 +519,23 @@ function face(g, c, dir) {
       if (d) { g.hline(4, 5, 6, c.eye); g.hline(10, 11, 6, c.eye); g.hline(4, 11, 8, c.stache); g.set(3, 9, c.stache); g.set(12, 9, c.stache); g.hline(7, 8, 9, c.mouth); }
       else { g.hline(3, 4, 6, c.eye); g.hline(1, 5, 8, c.stache); }
       break;
+    case 'freckles': // calm brows, a small smile, freckles on both cheeks (Elrediny)
+      if (d) { g.hline(4, 5, 5, c.hair); g.hline(10, 11, 5, c.hair); g.hline(7, 8, 9, c.mouth); [[3, 8], [5, 8], [4, 9], [10, 8], [12, 8], [11, 9]].forEach(([x, y]) => g.set(x, y, c.freckle)); }
+      else { g.hline(3, 5, 5, c.hair); g.set(3, 9, c.mouth); g.set(5, 8, c.freckle); g.set(6, 9, c.freckle); }
+      break;
+    case 'goatee': // thick brows, moustache joined to a chin goatee (Mr Amr Karate)
+      if (d) { g.hline(4, 6, 5, c.beard); g.hline(9, 11, 5, c.beard); g.hline(5, 10, 8, c.beard); g.set(5, 9, c.beard); g.set(10, 9, c.beard); g.hline(7, 8, 9, c.mouth);
+        g.hline(6, 9, 10, c.beard); g.hline(7, 8, 11, c.beard); }
+      else { g.hline(3, 5, 5, c.beard); g.hline(2, 5, 8, c.beard); g.hline(3, 5, 10, c.beard); g.set(4, 11, c.beard); }
+      break;
+    case 'fierce': // angry slanted brows, gritted mouth: hates losing (Saif)
+      if (d) { g.set(4, 4, c.hair); g.set(5, 5, c.hair); g.set(6, 5, c.hair); g.set(11, 4, c.hair); g.set(10, 5, c.hair); g.set(9, 5, c.hair); g.hline(6, 9, 9, c.mouth); g.hline(7, 8, 9, '#f4f0e8'); }
+      else { g.set(3, 5, c.hair); g.set(4, 5, c.hair); g.set(5, 4, c.hair); g.hline(2, 4, 9, c.mouth); }
+      break;
+    case 'focused': // flat, serious brows
+      if (d) { g.hline(4, 6, 5, c.hair); g.hline(9, 11, 5, c.hair); g.hline(7, 8, 9, c.mouth); }
+      else { g.hline(3, 5, 5, c.hair); g.set(3, 9, c.mouth); }
+      break;
     case 'habeba':
       if (d) { g.set(4, 6, c.eye); g.set(11, 6, c.eye); g.hline(7, 8, 9, c.mouth); }
       else { g.set(3, 6, c.eye); }
@@ -449,7 +549,8 @@ function face(g, c, dir) {
 // leg poses: [leftLegBottom, rightLegBottom] — a lifted foot ends 1px higher
 function body(g, c, dir, frame) {
   const big = c.body === 'big', square = c.body === 'square' || big, wide = c.body === 'wide' || square, skirt = c.body === 'skirt';
-  const t0 = square ? 3 : wide ? 4 : 5, t1 = square ? 12 : wide ? 11 : 10;
+  const thin = c.body === 'thin';
+  const t0 = square ? 3 : wide ? 4 : thin ? 6 : 5, t1 = square ? 12 : wide ? 11 : thin ? 9 : 10;
   if (dir !== 'side') {
     g.hline(t0, t1, 12, c.shirt);
     g.rect(t0, 13, t1 - t0 + 1, 6, c.shirt);
@@ -467,6 +568,7 @@ function body(g, c, dir, frame) {
       if (c.extra === 'apron') { g.rect(6, 14, 4, 5, '#f4f0e8'); g.hline(6, 9, 14, '#d8d0c4'); }
     }
     if (dir === 'up' && c.extra === 'hoodie') { g.hline(5, 10, 12, c.shirtS); g.hline(6, 9, 13, c.shirtS); }
+    if (c.extra === 'armband') g.rect(t0 - aw, 14 + la, aw, 2, c.band);            // captain's armband (left arm)
     if (dir === 'up' && c.extra === 'hstripes') for (const y of [13, 15, 17]) g.hline(t0 - 2, t1 + 2, y, c.stripe);
     if (dir === 'down') {
       if (c.extra === 'labcoat') { g.rect(7, 12, 2, 6, c.inner); g.vline(6, 13, 18, c.shirtS); g.vline(9, 13, 18, c.shirtS); g.set(5, 14, '#2f6fc2'); }
@@ -477,6 +579,7 @@ function body(g, c, dir, frame) {
       if (c.extra === 'tracksuit') { g.vline(t0, 13, 18, c.stripe); g.vline(t1, 13, 18, c.stripe); g.vline(7, 12, 15, c.stripe); g.set(7, 16, c.whistle); }
       if (c.extra === 'chain') { g.hline(6, 9, 13, c.gold); g.set(7, 14, c.gold); g.set(8, 14, c.gold); g.set(t1 + 1, 17, c.gold); }
       if (c.extra === 'vest') { g.rect(6, 12, 4, 7, c.inner); g.vline(7, 13, 18, c.shirt); g.vline(8, 13, 18, c.shirt); }
+      if (c.extra === 'belt') { g.hline(t0, t1, 17, c.belt); g.vline(7, 17, 19, c.belt); g.vline(9, 17, 19, c.belt); g.vline(7, 13, 16, c.shirtS); }
       if (c.extra === 'beads') { g.vline(t0 - 1, 17, 20, c.acc); g.set(t0 - 1, 21, c.acc); }
     }
   } else {
@@ -488,6 +591,8 @@ function body(g, c, dir, frame) {
     if (c.extra === 'stick' || c.extra === 'suit') { g.vline(5, 12, 15, c.tie); }
     if (c.extra === 'apron') g.rect(5, 14, 2, 5, '#f4f0e8');
     if (c.extra === 'hstripes') for (const y of [13, 15, 17]) g.hline(5, 10, y, c.stripe);
+    if (c.extra === 'armband') g.rect(7 + sw, 14, 2, 2, c.band);
+    if (c.extra === 'belt') g.hline(5, 10, 17, c.belt);
   }
 
   // legs
@@ -549,9 +654,23 @@ function item(g, c, dir) {
   if (c.item === 'phone') { g.rect(hx - 1, hy - 3, 2, 3, '#1b1420'); g.set(hx - 1, hy - 3, '#9fd0f0'); }
 }
 
+// football kit: the leg colour becomes shorts on top, socks below (row 21); one gold boot for Abdallah
+function kit(g, c, dir) {
+  const same = (a, b) => a && b && a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+  if (c.kit) {
+    const P = hex(c.pants), PS = hex(c.pantsS);
+    for (let x = 0; x < 16; x++) { const v = g.get(x, 21); if (same(v, P)) g.set(x, 21, c.sock); else if (same(v, PS)) g.set(x, 21, c.sockS); }
+  }
+  if (c.extra === 'goldboot') {
+    const S = hex(c.shoe), SS = hex(c.shoeS), [a, b] = dir === 'down' ? [8, 11] : dir === 'up' ? [4, 7] : [3, 6];
+    for (const y of [21, 22]) for (let x = a; x <= b; x++) { const v = g.get(x, y); if (same(v, S) || same(v, SS)) g.set(x, y, c.gold); }
+  }
+}
+
 export function frame(c, dir, f) {
   const g = new Grid(16, 24);
   body(g, c, dir, f);
+  kit(g, c, dir);
   head(g, c, dir);
   hair(g, c, dir);
   face(g, c, dir);

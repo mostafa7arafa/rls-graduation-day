@@ -31,10 +31,19 @@ these are real people and a real school.
   final (teachers). Other matches are simulated with the real engine; `STORY` forces the results that really happened.
   Knockout draws go to a penalty shootout (`phase 'pens'`: 5 each, then sudden death; the human takes our kicks and is
   the keeper for theirs). Story difficulty = replay a lost match; Cup = start again.
-- Signature moves (`SPECIALS` in sim.ts): a qualifying moment sets `m.pending` and emits `special`; the sim is frozen
-  until `release()`. MatchScene plays the anime cutscene, then releases: **the AI plays the move, not the human.** Max 2
-  per player per match, 25 s apart. Headless code (balancer, cup simulation) must call `release()` whenever `pending`.
-- Balance per round (AI rls vs them, knockout): prep2 ~99%, sec1 ~69%, prep1 ~63% (hardest), teachers ~67%.
+- Signature moves (`SPECIALS` in sim.ts, 13 of them, kinds shot / dribble / pass / tackle / save, each with an inner `line`):
+  a qualifying moment sets `m.pending` and emits `special`; the sim is frozen until `release()`. MatchScene plays the cut-in
+  (`src/scenes/match/cutin.ts`; tackles and saves are DUELS against the man on the ball / the last shooter), then releases:
+  **the AI plays the move, not the human**, with ~0.5 s of slow motion. Max 2 per player per match, 18 s apart (~8-12
+  per match). Headless code (balancer, cup simulation) must call `release()` whenever `pending`.
+- Fouls: a failed tackle from behind can be a foul (`foul` event, free kick where it happened); the second by the same
+  player is a yellow card (`card`): Mr Amr's panel. ~3 fouls a match. `lost` = someone was tackled (Saif shouts).
+- `m.tactic[team]` (-1 defend, 0, 1 attack) shifts pressing and shooting via `aggr()`; set by the coach's half-time talk.
+- The shootout a human sees is NOT the sim's: MatchScene opens `Shootout` (front view, aim + power, keeper tells) and
+  hands the kicks back with `m.finishPens(kicks)`. The sim's own `pens` phase is only for AI-vs-AI (balancer, cup sim).
+- `MatchScene.cutting` = a cut-in, talk or shootout is on: the sim isn't stepped and pause is blocked. Events from calling
+  sim methods directly (outside `step()`) are cleared by the next step and never reach the scene.
+- Balance per round (AI rls vs them, knockout): prep2 ~99%, sec1 ~81%, prep1 ~75%, teachers ~62%.
 
 ## AI (decide → steer)
 - **Team state** each tick: attacking (we own the ball) or defending / loose ball.

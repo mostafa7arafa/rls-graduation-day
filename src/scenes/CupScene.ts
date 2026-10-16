@@ -4,13 +4,12 @@ import { sfx } from '../systems/sfx';
 import { music } from '../systems/music';
 import { crowd as voices } from '../systems/crowd';
 import { tr, txt, isAr, num } from '../systems/i18n';
-import { CAST } from '../data/cast';
 import { TEAMS } from '../match/teams';
 import {
   loadCup, saveCup, newCup, ourMatch, simulateOthers, roundKeys, teamsOf, winner, ROUND_NAMES,
   BEFORE, AFTER_WIN, AFTER_LOSS_STORY, AFTER_LOSS_CUP, AFTER_WARMUP_LOSS,
 } from '../match/cup';
-import type { CupState, Diff, Kind, Line, Score } from '../match/cup';
+import type { CupState, Diff, Kind, Score, Step } from '../match/cup';
 
 // SEASON 2: THE CUP. The football hub: start / continue the school cup, or play a friendly.
 // Flow per round: bracket -> pre-match talk -> MatchScene -> back here with the result ->
@@ -18,7 +17,7 @@ import type { CupState, Diff, Kind, Line, Score } from '../match/cup';
 
 interface Result { won: boolean; score: Score }
 interface Data { result?: Result; friendly?: boolean }
-type Mode = 'menu' | 'talk' | 'bracket' | 'trophy';
+type Mode = 'menu' | 'talk' | 'bracket' | 'trophy';   // 'talk' = a staged scene (StageScene) is playing on top
 
 export class CupScene extends Phaser.Scene {
   private st: CupState | null = null;
@@ -28,11 +27,7 @@ export class CupScene extends Phaser.Scene {
   private texts: Phaser.GameObjects.Text[] = [];
   private layer: Phaser.GameObjects.GameObject[] = [];
   private onPick: ((o: string) => void) | null = null;
-  private lines: Line[] = [];
-  private lineAt = 0;
   private afterTalk: (() => void) | null = null;
-  private talkText!: Phaser.GameObjects.Text;
-  private talkName!: Phaser.GameObjects.Text;
   private pending: string | null = null;    // friendly: chosen opponent
 
   constructor() { super('cup'); }
@@ -182,21 +177,17 @@ export class CupScene extends Phaser.Scene {
     if (justPlayed) sfx.item();
   }
 
-  // ───────────────────────── talk (a dialogue box over the board)
-  private talk(lines: Line[], then: () => void) {
+  // ───────────────────────── talk: a staged scene with the characters (StageScene), on top of this one
+  private talk(script: Step[], then: () => void) {
     this.clear(); this.mode = 'talk';
-    this.keep(this.add.rectangle(W / 2, H - 46, W - 24, 70, 0x1b1420, 0.95).setStrokeStyle(2, 0xc23b3b));
-    this.talkName = this.keep(this.add.text(isAr() ? W - 24 : 24, H - 74, '', txt(8, { color: '#f2c94c' })).setOrigin(isAr() ? 1 : 0, 0.5));
-    this.talkText = this.keep(this.add.text(isAr() ? W - 24 : 24, H - 62, '', txt(8, { color: '#f4f0e8', wordWrap: { width: W - 56 }, lineSpacing: isAr() ? -2 : 6 })).setOrigin(isAr() ? 1 : 0, 0));
-    this.lines = lines; this.lineAt = 0; this.afterTalk = then;
-    this.showLine();
-  }
-  private showLine() {
-    const [who, text] = this.lines[this.lineAt];
-    const sp = CAST[who];
-    this.talkName.setText(who === 'narrator' ? '' : tr(sp?.name ?? who)).setColor(sp?.color ?? '#f2c94c');
-    this.talkText.setText(tr(text));
-    sfx.blip(sp?.voice ?? 300);
+    this.scene.launch('stage', { script });
+    const stage = this.scene.get('stage');
+    stage.events.once('done', () => {
+      this.scene.stop('stage');
+      this.cameras.main.fadeIn(200);
+      music.play('stadium');
+      then();
+    });
   }
 
   // ───────────────────────── champions
@@ -210,7 +201,7 @@ export class CupScene extends Phaser.Scene {
     this.keep(this.add.particles(W / 2, 64, 'sparkle', { x: { min: -30, max: 30 }, y: { min: -20, max: 20 }, scale: { start: 2, end: 0 }, lifespan: 900, frequency: 120 }));
     this.keep(this.add.text(W / 2, 118, tr('CHAMPIONS'), txt(16, { color: '#f2c94c' })).setOrigin(0.5).setShadow(2, 2, '#c23b3b', 0, false, true));
     this.keep(this.add.text(W / 2, 140, tr('2nd Secondary · Rosetta Language School Cup'), txt(8, { color: '#f4f0e8' })).setOrigin(0.5));
-    const team = ['hussein', 'warshan', 'student3', 'karim', 'shazly', 'mostafa', 'hefny'];
+    const team = ['fb_hussein', 'fb_warshan', 'elrediny', 'fb_karim', 'fb_shazly', 'mostafa', 'hefny'];
     team.forEach((k, i) => {
       const s = this.keep(this.add.sprite(W / 2 - 96 + i * 32, 200, k, 0).setScale(2));
       this.tweens.add({ targets: s, y: 190, yoyo: true, repeat: -1, duration: 300 + (i % 3) * 60, delay: i * 70 });
@@ -228,11 +219,7 @@ export class CupScene extends Phaser.Scene {
       else if (back && this.items.includes('BACK')) { sfx.back(); this.onPick?.('BACK'); }
       return;
     }
-    if (this.mode === 'talk' && ok) {
-      if (++this.lineAt < this.lines.length) this.showLine();
-      else { const f = this.afterTalk; this.afterTalk = null; f?.(); }
-      return;
-    }
+    if (this.mode === 'talk') return;   // the stage scene has the keys
     if (this.mode === 'bracket' && ok) { sfx.select(); const f = this.afterTalk; this.afterTalk = null; f?.(); return; }
     if (this.mode === 'bracket' && back) { sfx.back(); this.hub(); return; }
     if (this.mode === 'trophy' && (ok || back)) { voices.stop(); this.hub(); }

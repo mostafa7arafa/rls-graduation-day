@@ -8,7 +8,7 @@ Top-down 2D comedy RPG (Undertale / Pokémon style), 7 chapters + finale, comple
 - `npm run build` → typecheck + production build in `dist/` (static, deployable anywhere)
 - `node tools/playtest.mjs <smoke|full|battle|ch2|...>` (chN scenarios start from a save at that chapter) → headless playthrough with screenshots in `tools/preview/playtest/` (dev server must be running). **Run `full` after any story/flow change** and look at the screenshots. `LANG=ar node tools/playtest.mjs full` does the same in Arabic.
 - `node tools/i18n-check.mjs` → lists English lines with no Arabic translation, and stale Arabic keys
-- **Season 2 football:** title → FOOTBALL (PREVIEW) or `http://localhost:5173/?cup` = the cup hub (cup, friendlies); `?match` = a quick match. `node tools/playtest.mjs cup` plays the whole cup (talks, cutscene, penalties, bracket, trophy). `node tools/match-sim.mjs rls teachers 200` = headless AI-vs-AI balance; `node tools/playtest.mjs match` / `match2` = keyboard bot / two fake controllers. Plan + real facts: `docs/seasons-plan.md`; how it works: the `football-ai` skill.
+- **Season 2 football:** title → FOOTBALL (PREVIEW) or `http://localhost:5173/?cup` = the cup hub (cup, friendlies); `?match` = a quick match. `node tools/playtest.mjs cup` plays the whole cup (staged talks, VS intro, cutscene, half-time talk, the front-view shootout, bracket, trophy); `drama` forces the goal cut-in, foul/yellow card, Hussein's knee, a duel; `pens` = the shootout alone. `node tools/match-sim.mjs rls teachers 200` = headless AI-vs-AI balance; `node tools/playtest.mjs match` / `match2` = keyboard bot / two fake controllers. Plan + real facts: `docs/seasons-plan.md`; how it works: the `football-ai` skill.
 
 ## Stack
 Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skills in `.claude/skills/`) + TypeScript + Vite. No other runtime deps.
@@ -29,12 +29,16 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 | End credits (farewell lines) | `src/scenes/CreditsScene.ts` |
 | Dialogue box, choices, HUD, toasts | `src/scenes/UIScene.ts` |
 | Save (flags/items, localStorage, versioned) | `src/systems/save.ts` |
-| Synth SFX + voice reactions (no audio files) | `src/systems/sfx.ts` |
+| Synth SFX + voice reactions; a few CC0 Kenney samples (`sample()`, files in `public/assets/sfx/`) | `src/systems/sfx.ts` |
 | Background music (text-written chiptune, maqam scales + darbuka) | `src/systems/music.ts` |
 | Egyptian Arabic translation (English line → Masri) | `src/data/ar/chN.ts`, lookup in `src/systems/i18n.ts` |
 | Pixel art source (characters, tiles, props) | `tools/art/*.mjs`, toolkit `tools/pix.mjs` |
 | Football (Season 2): court, teams, match sim + AI | `src/match/court.ts`, `teams.ts`, `sim.ts` (pure TS, no Phaser) |
-| Football screen, menus, HUD, anime cutscenes, penalties HUD | `src/scenes/MatchScene.ts` |
+| Football screen, menus, HUD, the drama (referee, half-time talk, shouting players, Hussein's knee, last minute) | `src/scenes/MatchScene.ts` |
+| Anime cut-ins (eyes + inner line, move name on an impact frame, duels, goal, VS intro, story panels) | `src/scenes/match/cutin.ts` |
+| Penalty shootout (front view, aim + power, keeper reads the kicker's tell) | `src/scenes/match/shootout.ts` |
+| The court art (shared): garden with 2 trees + the red swings/slide/pull-up bars, crowd | `src/scenes/match/courtArt.ts` |
+| Team talks between cup matches, staged with the characters (classroom / court) | `src/scenes/StageScene.ts`, scripts = `Step[]` in `src/match/cup.ts` |
 | The cup: bracket, story lines per round, simulated results, save (`rls-cup`) | `src/match/cup.ts` (data) + `src/scenes/CupScene.ts` (hub, bracket, talks, trophy) |
 | Football input (analog, two players) | `src/systems/actions.ts`; button numbers per controller: `src/systems/padmap.ts` |
 | Football crowd (murmur, chants) | `src/systems/crowd.ts` |
@@ -51,6 +55,7 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 - Story state = flags in `save.ts`. Scripts are `async (c: Ctx) => {...}`; use `by(c, {mostafa, hussein, hefny})` for leader-dependent lines — that's the core comedy mechanic, every new interaction should use it where it's funny.
 - Keyboard menus must be **event-driven** (`keydown`), not polled with `JustDown` — quick taps get lost.
 - Keep jokes affectionate; these are real people. Jokes target behaviour (know-it-alls, rivalries, crushes), never bodies or skin colour. Lore and personalities: `docs/design.md`.
+- Football kits: every grade has its own shirt colour (`KIT` in `tools/art/characters.mjs`). Our players' sprites (`fb_*`, `elrediny`) are theirs alone: no other team may reuse them or a lookalike.
 - Commits: no AI attribution lines (portfolio repo).
 
 ## Skills (project-local, `.claude/skills/`)

@@ -19,6 +19,7 @@ import { ShowScene } from './scenes/encounter/ShowScene';
 import { PhotoScene } from './scenes/encounter/PhotoScene';
 import { MatchScene } from './scenes/MatchScene';
 import { CupScene } from './scenes/CupScene';
+import { StageScene } from './scenes/StageScene';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -29,7 +30,7 @@ const game = new Phaser.Game({
   backgroundColor: '#1b1420',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   physics: { default: 'arcade', arcade: { debug: false } },
-  scene: [BootScene, TitleScene, WorldScene, UIScene, BattleScene, QuizScene, SpellingScene, LabScene, HaggleScene, RhythmScene, PenaltyScene, ShowScene, PhotoScene, CreditsScene, MatchScene, CupScene],
+  scene: [BootScene, TitleScene, WorldScene, UIScene, BattleScene, QuizScene, SpellingScene, LabScene, HaggleScene, RhythmScene, PenaltyScene, ShowScene, PhotoScene, CreditsScene, MatchScene, CupScene, StageScene],
 });
 
 // controllers: buttons become key presses; the HUD swaps its hint to controller buttons

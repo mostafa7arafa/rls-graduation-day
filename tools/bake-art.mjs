@@ -27,6 +27,7 @@ const props = {
   soul: P.soul(), chalk: P.chalk(), stickH: P.stickH(), cloud: P.cloud(), sparkle: P.sparkle(), sandwich: P.sandwich(), key: P.key(), flag: P.flag(),
   chain: P.chain(), flask: P.flask(), flaskLiquid: P.flaskLiquid(), beaker: P.beaker(), beakerLiquid: P.beakerLiquid(),
   tractor: P.tractor(), tractorRide: P.tractorRide(sheets), ball: P.ball(), arrow: P.arrow(),
+  swingRed: P.swingRed(), slide: P.slide(), pullup: P.pullup(),
 };
 for (const [n, g] of Object.entries(props)) writePNG(`${A}${n}.png`, g);
 

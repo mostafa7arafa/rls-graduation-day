@@ -164,3 +164,28 @@ export function arrow() { // rhythm-game arrow, pointing right
   g.rect(1, 5, 7, 4, '#f4f0e8'); g.spans({ 1: [7, 8], 2: [7, 9], 3: [7, 10], 4: [7, 11], 5: [7, 12], 6: [7, 12], 7: [7, 12], 8: [7, 12], 9: [7, 11], 10: [7, 10], 11: [7, 9], 12: [7, 8] }, '#f4f0e8');
   return g.outline(OUT);
 }
+
+// ── Season 2: the garden next to the court. Everything in it was painted the same red.
+const RED = '#c23b3b', REDS = '#9c2e2e', REDH = '#e05050';
+export function swingRed() { // a swing set: red frame, red seats
+  const g = new Grid(40, 36);
+  g.rect(2, 2, 36, 3, RED); g.hline(2, 37, 2, REDH);
+  for (const x of [1, 36]) { g.rect(x, 2, 3, 33, RED); g.vline(x + 2, 5, 34, REDS); }
+  for (const x of [10, 24]) { g.vline(x, 5, 24, '#7a7f8a'); g.vline(x + 6, 5, 24, '#7a7f8a'); g.rect(x - 1, 25, 9, 3, RED); g.hline(x - 1, x + 7, 25, REDH); }
+  return g.outline(OUT);
+}
+export function slide() { // a red slide: ladder on the left, chute down to the right
+  const g = new Grid(44, 34);
+  for (const x of [3, 9]) g.vline(x, 4, 32, '#9aa2ab');
+  for (let y = 8; y < 32; y += 5) g.hline(3, 9, y, '#9aa2ab');
+  g.rect(2, 3, 10, 3, RED); g.hline(2, 11, 3, REDH);
+  for (let i = 0; i < 30; i++) { const x = 11 + i, y = 4 + Math.floor(i * 0.9); g.rect(x, y, 2, 4, RED); g.set(x, y, REDH); g.set(x, y + 3, REDS); }
+  g.rect(39, 30, 4, 3, RED);
+  return g.outline(OUT);
+}
+export function pullup() { // red pull-up bars: three heights
+  const g = new Grid(44, 34);
+  const bars = [[2, 14, 12], [14, 26, 6], [26, 40, 1]];
+  for (const [a, b, top] of bars) { g.vline(a, top, 32, RED); g.vline(a + 1, top, 32, REDS); g.vline(b, top, 32, RED); g.vline(b + 1, top, 32, REDS); g.hline(a, b + 1, top, REDH); g.hline(a, b + 1, top + 1, RED); }
+  return g.outline(OUT);
+}

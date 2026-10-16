@@ -20,6 +20,8 @@ let n = 0;
 const shot = async (name) => page.screenshot({ path: `${out}/${String(++n).padStart(2, '0')}-${name}.png` });
 const wait = (ms) => page.waitForTimeout(ms);
 const tap = async (key, times = 1, gap = 120) => { for (let i = 0; i < times; i++) { await page.keyboard.press(key); await wait(gap); } };
+// football: wait for the VS intro (or any cut-in) to finish before playing
+const introDone = async () => { for (let i = 0; i < 60; i++) { if (!(await page.evaluate(() => window.game.scene.getScene('match')?.cutting))) return; await wait(150); } };
 const hold = async (key, ms) => { await page.keyboard.down(key); await wait(ms); await page.keyboard.up(key); };
 // advance dialogue: press Z until no dialogue is open (max n presses)
 // (cutscenes pause between lines, so only stop once the dialogue box has stayed closed for a moment)
@@ -379,13 +381,14 @@ const scenarios = {
   async match() {
     await page.goto(url + '/?match'); await wait(1800); await shot('menu');
     await page.evaluate(() => { const s = window.game.scene.getScene('match'); s.m.halfSeconds = 25; });
-    await tap('z'); await wait(500); await shot('kickoff');
+    await tap('z'); await wait(500); await shot('kickoff'); await introDone();
     const keys = new Set();
     const press = async (want) => { for (const k of keys) if (!want.has(k)) { await page.keyboard.up(k); keys.delete(k); } for (const k of want) if (!keys.has(k)) { await page.keyboard.down(k); keys.add(k); } };
     let shots = 0, passes = 0, frames = 0;
     for (let i = 0; i < 1200; i++) {
       const st = await page.evaluate(() => { const s = window.game.scene.getScene('match'); const m = s.m, me = m.controlled(0), b = m.ball;
         return { mode: s.mode, phase: m.phase, gy: m.oppGoalY(0), me: me && { x: me.x, y: me.y }, has: b.owner === me, ball: { x: b.x, y: b.y }, score: m.score, clock: m.clock, half: m.half }; });
+      if (st.mode === 'talk') { await tap('z', 1, 60); await wait(300); continue; }   // half-time talk: BALANCED
       if (st.mode !== 'play') break;
       const want = new Set();
       const tgt = st.has ? { x: 104, y: st.gy } : st.ball;
@@ -409,57 +412,140 @@ const scenarios = {
     console.log(`match: mode ${r.mode}, phase ${r.phase}, half ${r.half} clock ${r.clock.toFixed(1)}, iterations ${frames}, score ${r.score.join('-')}, bot shots ${shots}, passes ${passes}, sim shots ${r.stats.shots.join('/')}, saves ${r.stats.saves.join('/')}`);
     // pause menu works mid-match
     await tap('z'); await wait(600);   // PLAY AGAIN
-    await tap('z'); await wait(400); await tap('Escape'); await wait(300); await shot('pause');
+    await tap('z'); await wait(400); await introDone(); await tap('Escape'); await wait(300); await shot('pause');
     console.log('pause:', await page.evaluate(() => window.game.scene.getScene('match').mode));
   },
 
-  // SEASON 2: the whole cup. Menus, talks, warm-up, a cutscene, a penalty shootout, the bracket, the final, the trophy
+  // SEASON 2: the whole cup. Staged talks, VS intro, a cutscene, half-time talk, the front-view shootout, the bracket, the final, the trophy
   async cup() {
     const M = (fn, arg) => page.evaluate(fn, arg);
-    const mode = () => M(() => window.game.scene.isActive('match') ? 'match:' + window.game.scene.getScene('match').mode : window.game.scene.isActive('cup') ? 'cup:' + window.game.scene.getScene('cup').mode : 'other');
-    const zUntil = async (want, max = 30) => { for (let i = 0; i < max && !(await mode()).startsWith(want); i++) { await tap('z', 1, 60); await wait(350); } return mode(); };
-    const finish = (a, b) => M(([a, b]) => { const m = window.game.scene.getScene('match').m; m.score = [a, b]; m.half = 2; m.clock = m.halfSeconds; }, [a, b]);
+    const mode = () => M(() => window.game.scene.isActive('stage') ? 'stage' : window.game.scene.isActive('match') ? 'match:' + window.game.scene.getScene('match').mode : window.game.scene.isActive('cup') ? 'cup:' + window.game.scene.getScene('cup').mode : 'other');
+    const zUntil = async (want, max = 300) => { for (let i = 0; i < max && !(await mode()).startsWith(want); i++) { await tap('z', 1, 60); await wait(260); } return mode(); };
+    const finish = (a, b) => M(([a, b]) => { const m = window.game.scene.getScene('match').m; m.score = [a, b]; m.half = 2; m.clock = m.halfSeconds; m.phase = 'play'; m.ball.owner = null; m.ball.x = 104; m.ball.y = 176; m.ball.vx = m.ball.vy = 0; }, [a, b]);
     await page.goto(url + '/?cup'); await wait(1800); await shot('hub');
-    await tap('z'); await wait(300); await shot('difficulty'); await tap('z'); await wait(300); await tap('z'); await wait(500);   // NEW CUP, STORY, 1 PLAYER
-    await shot('talk');
+    await tap('z'); await wait(300); await shot('difficulty'); await tap('z'); await wait(300); await tap('z'); await wait(1200);   // NEW CUP, STORY, 1 PLAYER
+    // the staged warm-up scene: classroom, then the court
+    await shot('stage-classroom');
+    for (let i = 0; i < 9; i++) { await tap('z', 1, 60); await wait(500); }
+    await shot('stage-classroom2');
+    for (let i = 0; i < 60 && (await M(() => window.game.scene.getScene('stage').kit)) !== true; i++) { await tap('z', 1, 60); await wait(300); }
+    await wait(900); await shot('stage-court');
     console.log('warm-up:', await zUntil('match:play'));
-    await wait(800); await tap('z', 1, 60); await wait(1200); await shot('warmup');   // kick off (pass)
+    await wait(1200); await shot('vs-intro');
+    await wait(2200); await tap('z', 1, 60); await wait(1200); await shot('warmup');
     // a signature move: freeze + anime panel, then the AI plays on
     await M(() => { const s = window.game.scene.getScene('match'), m = s.m, orig = m.step.bind(m); let done = false;
       m.step = (i) => { orig(i); if (!done && m.phase === 'play') { done = true; m.special(m.players.find(p => p.def.id === 'karim'), 'shot', 0); } }; });
-    await wait(700); await shot('cutscene');
+    await wait(500); await shot('cutscene-eyes');
+    await wait(1100); await shot('cutscene');
     console.log('cutscene: frozen =', await M(() => window.game.scene.getScene('match').cutting));
-    await wait(2400); console.log('cutscene: after =', await M(() => { const s = window.game.scene.getScene('match'); return `${s.cutting} pending ${!!s.m.pending}`; }));
+    await wait(2600); console.log('cutscene: after =', await M(() => { const s = window.game.scene.getScene('match'); return `${s.cutting} pending ${!!s.m.pending}`; }));
+    // half time: the coach's talk and the tactic menu
+    await M(() => { const m = window.game.scene.getScene('match').m; m.clock = m.halfSeconds; });
+    await wait(3000); await shot('halftime-talk');
+    for (let i = 0; i < 20 && (await mode()) !== 'match:talk'; i++) await wait(400);
+    await shot('halftime-menu'); console.log('half time:', await mode());
+    await tap('ArrowUp'); await tap('z'); await wait(500);
+    console.log('tactic:', await M(() => window.game.scene.getScene('match').m.tactic.join(',')));
+    for (let i = 0; i < 20 && (await M(() => window.game.scene.getScene('match').m.phase)) === 'half'; i++) await wait(300);
     await finish(2, 0); await wait(1800); await shot('warmup-end');
     console.log('after warm-up:', await zUntil('cup:bracket')); await wait(300); await shot('bracket-qf');
     console.log('QF:', await zUntil('match:play'));
-    await wait(1200); await finish(1, 1); await wait(3500); await shot('pens-intro');
-    // penalties: when it's our kick, hold X then release (aim right)
-    for (let i = 0; i < 80 && (await mode()) === 'match:play'; i++) {
-      const st = await M(() => { const m = window.game.scene.getScene('match').m; return { state: m.pens?.state, human: (m.pens?.taker?.slot ?? -1) >= 0 }; });
-      if (st.state === 'aim' && st.human) { await page.keyboard.down('ArrowRight'); await page.keyboard.down('x'); await wait(450); await page.keyboard.up('x'); await page.keyboard.up('ArrowRight'); }
-      if (i === 6) await shot('pens');
-      await wait(400);
+    await wait(3600); await finish(1, 1); await wait(2500); await shot('pens-intro');
+    // the shootout: lock the aim, stop the power; in goal, dive left
+    const sh = () => M(() => { const s = window.game.scene.getScene('match'); return s.shootout ? s.shootout.phase : s.mode; });
+    let shots = 0;
+    for (let i = 0; i < 400; i++) {
+      const ph = await sh();
+      if (ph === 'end') break;
+      if (ph === 'aim') { await page.keyboard.down('ArrowRight'); await wait(380); await page.keyboard.up('ArrowRight'); if (shots === 0) await shot('pens-aim'); await tap('x', 1, 60); }
+      else if (ph === 'power') { await wait(200); if (shots === 0) await shot('pens-power'); await tap('x', 1, 60); shots++; }
+      else if (ph === 'keep') { await wait(500); await page.keyboard.down('ArrowLeft'); await tap('z', 1, 60); await page.keyboard.up('ArrowLeft'); await wait(300); if (shots < 2) await shot('pens-keep'); }
+      await wait(120);
     }
-    const r = await M(() => { const m = window.game.scene.getScene('match').m; return { pens: m.pensScore(), winner: m.pensWinner }; });
-    console.log(`shootout: ${r.pens.join('-')} winner team ${r.winner}`);
+    const r = await M(() => { const m = window.game.scene.getScene('match').m; return { pens: m.pensScore(), winner: m.pensWinner, phase: m.phase }; });
+    console.log(`shootout: ${r.pens.join('-')} winner team ${r.winner} phase ${r.phase} (our kicks ${shots})`);
     await shot('pens-end');
-    await zUntil('cup:', 10); await wait(300); console.log('after QF:', await mode()); await shot('after-qf');
+    // skip the talks with ESC from here on
+    for (let i = 0; i < 40 && !(await mode()).startsWith('cup:bracket') && !(await mode()).startsWith('match:play'); i++) {
+      if ((await mode()) === 'stage') { await tap('Escape'); await wait(600); } else { await tap('z', 1, 60); await wait(400); }
+      if (i === 3) await shot('after-qf');
+    }
+    console.log('after QF:', await mode());
     // jump to the final from a save, win it, see the trophy
     await M(() => localStorage.setItem('rls-cup', JSON.stringify({ v: 1, diff: 'story', kind: 'solo', round: 3,
       results: { qf0: [2, 1], qf1: [3, 0], qf2: [9, 0], qf3: [1, 2], sf0: [2, 1, 4, 3], sf1: [4, 1] } })));
     await page.goto(url + '/?cup'); await wait(1800);
     await tap('z'); await wait(500); await shot('bracket-final');
-    console.log('final:', await zUntil('match:play')); await wait(1000); await shot('final');
-    await finish(3, 2); await wait(1800);
-    console.log('trophy:', await zUntil('cup:trophy')); await wait(1200); await shot('trophy');
+    await tap('z'); await wait(1500);
+    for (let i = 0; i < 12; i++) { await tap('z', 1, 60); await wait(450); }
+    await shot('stage-final');
+    console.log('final:', await zUntil('match:play')); await wait(4000); await shot('final');
+    await finish(3, 2); await wait(4500);
+    await shot('final-end');
+    for (let i = 0; i < 60 && !(await mode()).startsWith('cup:trophy'); i++) { await tap('z', 1, 60); await wait(350); if (i === 14) await shot('stage-champions'); }
+    console.log('trophy:', await mode()); await wait(1200); await shot('trophy');
+  },
+
+  // SEASON 2 drama: goal cut-in, foul + yellow card (Mr Amr), Hussein's knee, Saif shouting, a duel cut-in
+  async drama() {
+    const M = (fn, arg) => page.evaluate(fn, arg);
+    await page.goto(url + '/?cup'); await wait(1500);
+    await M(() => window.game.scene.getScene('cup').play('rls', 'prep1', 'solo', true, true));
+    await wait(1500); await shot('vs'); await wait(2600);
+    const S = () => window.game.scene.getScene('match');
+    // a goal for us: put the ball in the net
+    await M(() => { const m = window.game.scene.getScene('match').m; m.ball.owner = null; m.ball.x = 104; m.ball.y = 3; m.ball.vy = -200; m.ball.vx = 0; m.ball.z = 2; m.ball.shot = 0; m.ball.last = m.players.find(p => p.def.id === 'karim'); });
+    await wait(500); await shot('goal-cutin'); await wait(2500); await shot('after-goal');
+    // Saif's teammate loses it: Saif shouts
+    await M(() => { const s = window.game.scene.getScene('match'); s.lastBubble = -1e9; s.onLost('prep1a', 1); });
+    await wait(400); await shot('saif-shouts');
+    // two fouls by Bodda-free prep1a: the second is a card
+    await M(() => window.game.scene.getScene('match').onFoul('prep1a', 1, false));
+    await wait(500); await shot('foul');
+    await wait(1500);
+    await M(() => window.game.scene.getScene('match').onFoul('prep1a', 1, true));   // (events from a direct call never reach the scene)
+    await wait(1500);
+    await shot('yellow-card');
+    await wait(6000);
+    // Hussein's knee (forced)
+    await M(() => { const s = window.game.scene.getScene('match'); s.m.half = 2; const r = Math.random; Math.random = () => 0.1; s.maybeKnee(); Math.random = r; });
+    await wait(1500); await shot('knee'); await wait(3500); await shot('knee2'); await wait(6000);
+    // a duel cut-in: Warshan's clean slide on Saif
+    await M(() => { const m = window.game.scene.getScene('match').m; const saif = m.players.find(q => q.def.id === 'saif'); m.ball.owner = saif; m.phase = 'play'; m.lastSpecial = -1e9; m.special(m.players.find(q => q.def.id === 'warshan'), 'tackle', 0); window.game.scene.getScene('match').cutscene('warshan', 0); });
+    await wait(700); await shot('duel'); await wait(2500);
+    console.log('drama: mode', await M(() => `${window.game.scene.getScene('match').mode} cutting ${window.game.scene.getScene('match').cutting}`));
+  },
+
+  // the knockout shootout on its own (from a cup save at the quarter-final)
+  async pens() {
+    const M = (fn, arg) => page.evaluate(fn, arg);
+    await page.goto(url + '/?cup'); await wait(1500);
+    await M(() => window.game.scene.getScene('cup').play('rls', 'sec1', 'solo', true, true));
+    await wait(6000);
+    const st = () => M(() => { const s = window.game.scene.getScene('match'); return `mode ${s.mode} cutting ${s.cutting} phase ${s.m.phase} half ${s.m.half} clock ${s.m.clock.toFixed(1)} ko ${s.m.knockout} shootout ${s.shootout?.phase ?? '-'}`; });
+    console.log('before:', await st());
+    await M(() => { const m = window.game.scene.getScene('match').m; m.score = [1, 1]; m.half = 2; m.clock = m.halfSeconds; m.phase = 'play'; m.ball.owner = null; m.ball.x = 104; m.ball.y = 176; m.ball.vx = m.ball.vy = 0; });
+    for (let i = 0; i < 8; i++) { await wait(500); console.log(i, await st()); }
+    let shots = 0, saves = 0;
+    for (let i = 0; i < 500; i++) {
+      const ph = await M(() => { const s = window.game.scene.getScene('match'); return s.shootout ? s.shootout.phase : s.mode; });
+      if (ph === 'end') break;
+      if (ph === 'aim') { await page.keyboard.down('ArrowRight'); await page.keyboard.down('ArrowUp'); await wait(560); await page.keyboard.up('ArrowUp'); await page.keyboard.up('ArrowRight'); if (!shots) await shot('aim'); await tap('x', 1, 60); }
+      else if (ph === 'power') { await wait(380); if (!shots) await shot('power'); await tap('x', 1, 60); shots++; await wait(500); if (shots === 1) await shot('strike'); }
+      else if (ph === 'keep') { await wait(300); await page.keyboard.down('ArrowLeft'); await tap('z', 1, 60); await page.keyboard.up('ArrowLeft'); saves++; await wait(400); if (saves === 1) await shot('dive'); }
+      await wait(100);
+    }
+    const r = await M(() => { const m = window.game.scene.getScene('match').m; return { pens: m.pensScore(), winner: m.pensWinner, phase: m.phase }; });
+    console.log(`shootout: ${r.pens.join('-')} winner ${r.winner} phase ${r.phase} (our kicks ${shots}, dives ${saves})`);
+    await wait(1000); await shot('end');
   },
 
   // a generic PC pad: Square (3) shoots, L2 (8) must NOT mute, Options (11) pauses, d-pad (axes 6/7) moves
   async generic() {
     const btn = (i, v) => page.evaluate(([i, v]) => { window.__pads[0].buttons[i].pressed = v; }, [i, v]);
     await page.goto(url + '/?match'); await wait(1800);
-    await btn(0, true); await wait(150); await btn(0, false); await wait(700);   // Cross picks 1 PLAYER
+    await btn(0, true); await wait(150); await btn(0, false); await wait(700); await introDone();   // Cross picks 1 PLAYER
     const m = () => page.evaluate(() => { const s = window.game.scene.getScene('match'), me = s.m.controlled(0); return { mode: s.mode, me: me?.def.id, x: me?.x | 0, charge: me?.charge ?? -1, shots: s.m.stats.shots[0] }; });
     console.log('Cross starts:', (await m()).mode);
     await btn(3, true); await wait(400); const c = await m(); await btn(3, false); await wait(300);
@@ -480,7 +566,7 @@ const scenarios = {
     const btn = (p, i, v) => page.evaluate(([p, i, v]) => { window.__pads[p].buttons[i].pressed = v; }, [p, i, v]);
     const ax = (p, x, y) => page.evaluate(([p, x, y]) => { window.__pads[p].axes[0] = x; window.__pads[p].axes[1] = y; }, [p, x, y]);
     await page.goto(url + '/?match'); await wait(1800);
-    await tap('ArrowDown'); await tap('z'); await wait(600);           // CO-OP
+    await tap('ArrowDown'); await tap('z'); await wait(600); await introDone();   // CO-OP
     const who = () => page.evaluate(() => { const m = window.game.scene.getScene('match').m; return [0, 1].map(s => { const p = m.controlled(s); return p ? `${p.def.id}${p.keeper ? '(gk)' : ''}/team${p.team}` : '-'; }); });
     console.log('co-op controls:', (await who()).join(' · '));
     // pad 2 moves Hussein right with the analog stick (half tilt) — he should move, at a fraction of full speed
@@ -497,7 +583,7 @@ const scenarios = {
     await btn(0, 9, true); await wait(150); await btn(0, 9, false); await wait(300);
     console.log('Start pauses:', await page.evaluate(() => window.game.scene.getScene('match').mode));
     await tap('ArrowDown'); await tap('z'); await wait(800);            // RESTART -> menu
-    await tap('ArrowDown', 2); await tap('z'); await wait(600);         // VERSUS
+    await tap('ArrowDown', 2); await tap('z'); await wait(600); await introDone();   // VERSUS
     console.log('versus controls:', (await who()).join(' · '));
     await ax(1, 0, -1); await wait(600); await ax(1, 0, 0); await shot('versus');
   },

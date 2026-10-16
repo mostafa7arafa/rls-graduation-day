@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { W, H, FONT } from '../config';
-import { sfx, tone } from '../systems/sfx';
+import { sfx, tone, sample, loadSamples } from '../systems/sfx';
 import { music } from '../systems/music';
 import { crowd as voices } from '../systems/crowd';
 import { tr, txt, isAr, num, fmt } from '../systems/i18n';
@@ -11,19 +11,22 @@ import { CAST } from '../data/cast';
 import { Match, DT, SPECIALS } from '../match/sim';
 import type { Control, MatchEvent, Player } from '../match/sim';
 import { TEAMS } from '../match/teams';
-import { CW, CL, GOAL_X0, GOAL_X1, GOAL_D, BOX_R } from '../match/court';
+import { CW, CL } from '../match/court';
+import { specialCutin, goalCutin, talkCutin, vsIntro } from './match/cutin';
+import type { Actor } from './match/cutin';
+import { Shootout } from './match/shootout';
+import { drawCourt, drawCrowd, OX, OY, WORLD_H } from './match/courtArt';
 
-// SEASON 2 PROTOTYPE: one football match on the real RLS court (see src/match/court.ts).
+// SEASON 2: one football match on the real RLS court (see src/match/court.ts).
 // The match itself is src/match/sim.ts; this scene draws it, reads the controllers, and runs the
-// menus around it. Grey-box art for now: lines and stone are drawn here until the court is baked.
+// menus around it, plus the drama: anime cut-ins (./match/cutin.ts), the front-view penalty shootout
+// (./match/shootout.ts), Mr Amr refereeing, the coach's half-time talk, shouting players, Hussein's knee.
 //
 // Modes: 1 PLAYER (you control the outfield, AI Hussein in goal), CO-OP (player 2 IS Hussein),
 // VERSUS (player 2 controls the teachers).
 
-const OX = 136, OY = 48;                    // where the court sits in the world
-const WORLD_H = OY + CL + 48;
 const HALF_SECONDS = 150;                   // real seconds per half; the clock SHOWS 5 minutes
-type Mode = 'menu' | 'play' | 'pause' | 'end';
+type Mode = 'menu' | 'play' | 'pause' | 'end' | 'talk';
 type Kind = 'solo' | 'coop' | 'versus';
 interface Setup { home?: string; away?: string; kind?: Kind; knockout?: boolean; friendly?: boolean; cup?: boolean }
 
@@ -50,6 +53,8 @@ export class MatchScene extends Phaser.Scene {
   private whoBg!: Phaser.GameObjects.Rectangle;
   private crowd: Phaser.GameObjects.Sprite[] = [];
   private hefny!: Phaser.GameObjects.Sprite;
+  private coach!: Phaser.GameObjects.Sprite;
+  private ballHist: { x: number; y: number }[] = [];
   private panel: Phaser.GameObjects.GameObject[] = [];
   private menuItems: string[] = [];
   private menuSel = 0;
@@ -62,11 +67,24 @@ export class MatchScene extends Phaser.Scene {
   private lastOoh = -1e9;
   private setup: Setup = {};
   private cutting = false;
+  private shootout: Shootout | null = null;
+  private slow = 0;                          // seconds of slow motion left (after a signature move)
+  private trail: Phaser.GameObjects.Image[] = [];
+  private ref!: Phaser.GameObjects.Sprite;
+  private bubbles: Phaser.GameObjects.Container[] = [];
+  private lastBubble = -1e9;
+  private kneeDone = false;
+  private lastMinute = false;
+  private firstKick = true;
+  private lastShooter: Player | null = null;
+  private teachersWatching: Phaser.GameObjects.Sprite[] = [];
 
   constructor() { super('match'); }
 
   create(data: Setup = {}) {
-    this.setup = data ?? {}; this.cutting = false;
+    this.setup = data ?? {}; this.cutting = false; this.shootout = null; this.slow = 0; this.trail = []; this.bubbles = [];
+    this.kneeDone = false; this.lastMinute = false; this.firstKick = true; this.lastShooter = null; this.teachersWatching = [];
+    void loadSamples();
     this.mode = 'menu'; this.acc = 0; this.bodies.clear(); this.crowd = []; this.panel = []; this.padCount = -1;
     this.cameras.main.setBackgroundColor('#2a2f2a').fadeIn(300);
     this.cameras.main.setBounds(0, 0, W, WORLD_H);
@@ -82,6 +100,9 @@ export class MatchScene extends Phaser.Scene {
     }
     this.shadow = this.add.ellipse(0, 0, 6, 3, 0x000000, 0.35);
     this.ball = this.add.image(0, 0, 'ball').setScale(0.6);
+    for (let i = 0; i < 5; i++) this.trail.push(this.add.image(0, 0, 'ball').setScale(0.6).setAlpha(0).setTint(0xfff0a0));
+    // the referee: Mr Amr (gym), whistle in mouth, never far from the ball
+    this.ref = this.add.sprite(OX + CW / 2 + 30, OY + CL / 2, 'amr', 0).setOrigin(0.5, 1);
     this.powerBg = this.add.rectangle(0, 0, 18, 4, 0x1b1420).setVisible(false).setDepth(900);
     this.power = this.add.rectangle(0, 0, 16, 2, 0xf2c94c).setOrigin(0, 0.5).setVisible(false).setDepth(901);
     this.hud();
@@ -95,51 +116,16 @@ export class MatchScene extends Phaser.Scene {
     else this.openMenu();
   }
 
-  // ───────────────────────── the court (grey-box: drawn, to be baked in M4)
+  // ───────────────────────── the court (./match/courtArt.ts) and who's watching
   private drawCourt() {
-    const g = this.add.graphics();
-    g.fillStyle(0x3f7d3a).fillRect(0, 0, 104, WORLD_H);                 // the garden
-    g.fillStyle(0xb8ad9a).fillRect(104, 0, 30, WORLD_H);                // the pathway, where the crowd stands
-    g.fillStyle(0x8f8a85).fillRect(134, OY - GOAL_D - 2, CW + 4, CL + 2 * GOAL_D + 4);
-    g.fillStyle(0x86817c);                                              // street-stone tiles
-    for (let y = 0; y < CL; y += 16) for (let x = (y / 16) % 2 ? 0 : 8; x < CW; x += 16) g.fillRect(OX + x, OY + y, 8, 8);
-    g.fillStyle(0xe8dcc0).fillRect(OX + CW, 0, 10, WORLD_H);           // the school wall (right)
-    g.fillStyle(0xc9b994).fillRect(OX + CW + 8, 0, 2, WORLD_H);
-    g.fillStyle(0x34343e).fillRect(OX + CW + 10, 0, W, WORLD_H);       // outside: the street
-    // the school building (top) and the canteen (bottom)
-    g.fillStyle(0xd9c9a3).fillRect(0, 0, OX + CW + 10, OY - GOAL_D - 2);
-    for (let x = 12; x < OX + CW; x += 34) g.fillStyle(0x6fa8c8).fillRect(x, 10, 14, 12);
-    g.fillStyle(0xc28a5a).fillRect(OX, OY + CL + GOAL_D + 2, CW, 48);
-    g.fillStyle(0xe8d8b8).fillRect(OX + 10, OY + CL + GOAL_D + 8, CW - 20, 10);
-    this.add.text(OX + CW / 2, OY + CL + GOAL_D + 32, tr('CANTEEN'), txt(8, { color: '#3a2418' })).setOrigin(0.5);
-    // lines
-    g.lineStyle(1, 0xeef2e6, 0.85);
-    g.strokeRect(OX, OY, CW, CL);
-    g.lineBetween(OX, OY + CL / 2, OX + CW, OY + CL / 2);
-    g.strokeCircle(OX + CW / 2, OY + CL / 2, 24);
-    g.beginPath(); g.arc(OX + CW / 2, OY, BOX_R, 0, Math.PI); g.strokePath();
-    g.beginPath(); g.arc(OX + CW / 2, OY + CL, BOX_R, Math.PI, Math.PI * 2); g.strokePath();
-    // goals: net behind the line, posts on it
-    for (const [y0, dir] of [[OY, -1], [OY + CL, 1]] as const) {
-      const top = dir < 0 ? y0 - GOAL_D : y0;
-      g.fillStyle(0xdfe4ea, 0.35).fillRect(OX + GOAL_X0, top, GOAL_X1 - GOAL_X0, GOAL_D);
-      g.lineStyle(1, 0xdfe4ea, 0.5);
-      for (let x = GOAL_X0; x <= GOAL_X1; x += 4) g.lineBetween(OX + x, top, OX + x, top + GOAL_D);
-      g.fillStyle(0xf4f0e8).fillRect(OX + GOAL_X0 - 2, y0 - 1, GOAL_X1 - GOAL_X0 + 4, 2);
-      g.fillRect(OX + GOAL_X0 - 2, top, 2, GOAL_D); g.fillRect(OX + GOAL_X1, top, 2, GOAL_D);
-    }
-    // trees in the garden (baked props)
-    [[30, 70, 'tree1'], [70, 150, 'tree2'], [24, 240, 'tree2'], [66, 330, 'tree1'], [30, 410, 'tree1']].forEach(([x, y, k]) =>
-      this.add.image(x as number, y as number, k as string).setOrigin(0.5, 1).setDepth(y as number));
-    // the crowd on the pathway, Hefny leading the chants, Mostafa coaching at the halfway line
+    drawCourt(this);
     const fans = ['student1', 'student2', 'student5', 'shazly', 'student4', 'student6', 'amin', 'student7', 'basha', 'student8'];
-    fans.forEach((k, i) => {
-      const y = OY + 30 + i * 32 + (i % 2) * 6;
-      const s = this.add.sprite(110 + (i % 2) * 8, y, k, 6).setOrigin(0.5, 1).setFlipX(true).setDepth(y);
-      this.crowd.push(s);
-    });
-    this.hefny = this.add.sprite(120, OY + CL / 2 - 10, 'hefny', 6).setOrigin(0.5, 1).setFlipX(true).setDepth(OY + CL / 2 - 10);
-    this.add.sprite(126, OY + CL / 2 + 14, 'mostafa', 6).setOrigin(0.5, 1).setFlipX(true).setDepth(OY + CL / 2 + 14);
+    const away = this.setup.away ?? 'teachers';
+    // the final: the women teachers came to watch (Mr Ibrahim has noticed)
+    if (away === 'teachers') { fans[1] = 'doaa'; fans[3] = 'shimaa'; fans[5] = 'hager'; }
+    const { crowd, hefny, mostafa } = drawCrowd(this, fans);
+    this.crowd = crowd; this.hefny = hefny; this.coach = mostafa;
+    if (away === 'teachers') this.teachersWatching = [crowd[1], crowd[3], crowd[5]];
   }
 
   private hud() {
@@ -167,7 +153,7 @@ export class MatchScene extends Phaser.Scene {
   private showPanel(title: string, line: string, items: string[]) {
     this.clearPanel();
     const h = 56 + items.length * 16;
-    const fixed = <T extends Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Depth>(o: T) => { o.setScrollFactor(0).setDepth(2000); this.panel.push(o); return o; };
+    const fixed = <T extends Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Depth>(o: T) => { o.setScrollFactor(0).setDepth(2700); this.panel.push(o); return o; };
     fixed(this.add.rectangle(W / 2, H / 2, 300, h, 0x1b1420, 0.92).setStrokeStyle(2, 0xc23b3b));
     fixed(this.add.text(W / 2, H / 2 - h / 2 + 14, title, txt(8, { color: '#f2c94c' })).setOrigin(0.5));
     fixed(this.add.text(W / 2, H / 2 - h / 2 + 30, line, txt(8, { color: '#cfc6b8' })).setOrigin(0.5));
@@ -201,17 +187,25 @@ export class MatchScene extends Phaser.Scene {
       case 'BACK TO TITLE': case 'QUIT TO TITLE': return this.leave('title');
       case 'QUIT TO CUP': case 'BACK TO CUP': return this.leave('cup', { friendly: true });
       case 'CONTINUE': return this.leave('cup', { result: this.result() });
+      case 'ATTACK': case 'BALANCED': case 'DEFEND': return this.setTactic(o);
     }
   }
   private kickoff(kind: Kind) {
     this.kind = kind; this.clearPanel(); this.mode = 'play';
     bridgeOnly([START]);
     this.syncControls(true);
-    this.prime();
-    this.flash(tr('KICK OFF!'), '');
-    sfx.whistle();
+    const go = () => { this.cutting = false; this.prime(); this.flash(tr('KICK OFF!'), ''); sfx.whistle(); };
+    if (!this.firstKick) return go();
+    this.firstKick = false;
+    // before the first kick-off: the line-ups, VS, the two stars eye to eye
+    this.cutting = true;
+    const side = (t: 0 | 1) => {
+      const d = this.m.teams[t], star = [d.gk, ...d.field].find(p => SPECIALS[p.id] && SPECIALS[p.id].kind !== 'save') ?? d.field[2];
+      return { name: d.name, color: d.color, sprites: [d.gk, ...d.field].map(p => p.sprite), star: star.sprite };
+    };
+    vsIntro(this, side(0), side(1), go);
   }
-  private pause() { this.mode = 'pause'; bridgeOnly(null); this.showPanel(tr('PAUSED'), this.scoreLine(), ['RESUME', 'RESTART', this.setup.home ? 'QUIT TO CUP' : 'QUIT TO TITLE']); }
+  private pause() { if (this.shootout || this.cutting) return; this.mode = 'pause'; bridgeOnly(null); this.showPanel(tr('PAUSED'), this.scoreLine(), ['RESUME', 'RESTART', this.setup.home ? 'QUIT TO CUP' : 'QUIT TO TITLE']); }
   private leave(scene: string, data: object = {}) {
     this.cameras.main.fadeOut(300); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(scene, data));
   }
@@ -248,10 +242,14 @@ export class MatchScene extends Phaser.Scene {
 
   // ───────────────────────── loop
   update(_t: number, delta: number) {
+    if (this.shootout) this.shootout.update();
     if (this.mode === 'play' && !this.cutting) {
       this.syncControls();
       if (this.needPrime) { this.needPrime = false; clearTaps(); this.m.prime(readSlots(this.kind !== 'solo' && this.padCount >= 1)); this.acc = 0; }
-      this.acc += Math.min(delta, 100) / 1000;
+      // slow motion for a moment after a signature move
+      const rate = this.slow > 0 ? 0.35 : 1;
+      this.slow = Math.max(0, this.slow - Math.min(delta, 100) / 1000);
+      this.acc += Math.min(delta, 100) / 1000 * rate;
       while (this.acc >= DT) {
         this.acc -= DT;
         this.m.step(readSlots(this.kind !== 'solo' && this.padCount >= 1));
@@ -261,6 +259,17 @@ export class MatchScene extends Phaser.Scene {
       }
     }
     this.render();
+    this.drama();
+    // the referee jogs after the play, staying on the wall side of the ball
+    const dt = Math.min(delta, 100) / 1000, b0 = this.m.ball;
+    const rx = Phaser.Math.Clamp(OX + b0.x + 34, OX + 12, OX + CW - 6), ry = OY + Phaser.Math.Clamp(b0.y + 18, 10, CL - 10);
+    const vx = (rx - this.ref.x) * (1 - Math.exp(-1.8 * dt)), vy = (ry - this.ref.y) * (1 - Math.exp(-1.8 * dt));
+    this.ref.x += vx; this.ref.y += vy; this.ref.setDepth(this.ref.y);
+    const rdir = Math.abs(vy) > Math.abs(vx) ? (vy < 0 ? 'up' : 'down') : 'side';
+    const rkey = `amr-${Math.hypot(vx, vy) > 0.15 ? 'walk' : 'idle'}-${rdir}`;
+    if (this.ref.anims.currentAnim?.key !== rkey) this.ref.play(rkey);
+    this.ref.setFlipX(rdir === 'side' && vx > 0);
+    for (const bb of this.bubbles) { const t = bb.getData('target') as Phaser.GameObjects.Sprite; if (t?.active) bb.setPosition(t.x, t.y - 28); }
     // the crowd gets louder as the ball gets near a goal
     const near = Math.min(this.m.ball.y, CL - this.m.ball.y);
     if (this.mode === 'play') voices.excite(Phaser.Math.Clamp(1 - near / 130, 0, 1));
@@ -287,6 +296,10 @@ export class MatchScene extends Phaser.Scene {
     const b = m.ball;
     this.ball.setPosition(OX + b.x, OY + b.y - 2 - b.z).setDepth(OY + b.y + 1).setRotation(this.ball.rotation + Math.hypot(b.vx, b.vy) * 0.0015);
     this.shadow.setPosition(OX + b.x, OY + b.y).setDepth(OY + b.y - 1).setAlpha(Math.max(0.1, 0.35 - b.z / 120));
+    // afterimages behind a hard-hit ball (and through the slow motion)
+    this.ballHist.unshift({ x: this.ball.x, y: this.ball.y }); this.ballHist.length = Math.min(this.ballHist.length, 12);
+    const fast = Math.hypot(b.vx, b.vy) > 250 || (this.slow > 0 && !b.owner);
+    this.trail.forEach((t, i) => { const h = this.ballHist[(i + 1) * 2]; t.setVisible(fast && !!h).setAlpha(0.45 - i * 0.08).setDepth(this.ball.depth - 1); if (h) t.setPosition(h.x, h.y); });
     // shot power over the player charging it
     const charging = m.players.find(p => p.charge >= 0);
     this.powerBg.setVisible(!!charging); this.power.setVisible(!!charging);
@@ -311,104 +324,180 @@ export class MatchScene extends Phaser.Scene {
 
   private onEvent(e: MatchEvent) {
     switch (e.t) {
-      case 'kick': case 'pass': case 'tackle': sfx.kick(); break;
-      case 'shot': sfx.kick(); sfx.kick(); this.lastShot = this.time.now; break;
-      case 'post': sfx.bump(); this.ooh(); break;
+      case 'kick': case 'pass': if (!sample('kick', 0.45, 0.9 + Math.random() * 0.2)) sfx.kick(); break;
+      case 'tackle': if (!sample('tackle', 0.3)) sfx.kick(); break;
+      case 'shot':
+        if (!sample('shot', 0.75)) { sfx.kick(); sfx.kick(); }
+        this.lastShot = this.time.now; this.lastShooter = this.m.players.find(p => p.def.id === e.who) ?? null; break;
+      case 'post': if (!sample('post', 0.8)) sfx.bump(); this.ooh(); this.bubbleFor(e.team === 0 ? 'karim' : '', 'NOOO! The post!'); break;
+      case 'foul': this.onFoul(e.who!, e.team!, false); break;
+      case 'card': this.onFoul(e.who!, e.team!, true); break;
+      case 'lost': this.onLost(e.who!, e.team!); break;
       case 'wall': sfx.bump(); break;
       case 'miss': if (this.m.ball.z >= 0 && e.team !== undefined && this.lastShot > this.time.now - 2500) this.ooh(); break;
       case 'whistle': if (this.m.phase === 'restart' && this.m.phaseT > 0) sfx.blip(900); break;
       case 'goal': {
         sfx.whistle();
         const name = tr(CAST[e.who ?? '']?.name ?? '');
-        this.flash(tr('GOAL!'), e.team === 0 ? name : fmt('{name} scores for {team}.', { name, team: tr(this.m.teams[1].name) }));
+        const scorer = this.m.players.find(p => p.def.id === e.who);
+        const small = e.team === 0 ? name : fmt('{name} scores for {team}.', { name, team: tr(this.m.teams[1].name) });
         // the crowd is the school: they go wild for us, and groan (politely) for the teachers
         if (e.team === 0) { voices.roar(); this.time.delayedCall(2200, () => voices.ole()); this.jumpCrowd(5); }
         else { this.ooh(); voices.applause(); this.jumpCrowd(1); }
+        if (scorer) {
+          this.cutting = true;
+          goalCutin(this, { hero: this.actor(scorer), big: tr('GOAL!'), small }, () => { this.cutting = false; this.acc = 0; this.prime(); this.afterGoal(e.team as 0 | 1); });
+        } else this.flash(tr('GOAL!'), small);
         break;
       }
       case 'save':
         // the High Dam: every big Hussein save gets the chant
-        if (e.who === 'hussein') { voices.applause(); voices.hussein(); this.chant(); }
+        if (e.who === 'hussein') { voices.applause(); voices.hussein(); this.chant(); this.maybeKnee(); }
         else { this.ooh(); voices.applause(); }
         break;
-      case 'half': sfx.whistle(); this.flash(tr('HALF TIME'), tr('Change ends!')); break;
-      case 'pens': sfx.whistle(); this.flash(tr('PENALTIES!'), tr('Five each. Then sudden death.'), 2200); break;
-      case 'pen': this.onPen(e.kind!, e.team!, e.who!); break;
+      case 'half': sfx.whistle(); this.flash(tr('HALF TIME'), tr('Change ends!')); this.time.delayedCall(1300, () => this.halfTimeTalk()); this.cutting = true; break;
+      case 'pens': sfx.whistle(); this.cutting = true; this.flash(tr('PENALTIES!'), '', 1200); this.time.delayedCall(1500, () => this.startShootout()); break;
       case 'special': this.cutscene(e.who!, e.team!); break;
       case 'full': sfx.whistle(); break;
     }
   }
-  /** penalty shootout: who's up, and what happened */
-  private onPen(kind: string, team: number, who: string) {
-    const name = tr(CAST[who]?.name ?? '');
-    if (kind === 'ready') {
-      const human = this.m.pens?.taker?.slot ?? -1, keeperHuman = this.m.players.some(p => p.keeper && p.slot >= 0);
-      const style = padStyle();
-      const hint = human >= 0 ? (touchActive() ? 'Aim with the pad, hold B to shoot' : style ? 'Aim with the stick, hold □ to shoot' : 'Aim with the arrows, hold X to shoot')
-        : keeperHuman ? (touchActive() ? 'In goal: hold a direction, tap A to dive' : style ? 'In goal: hold a direction, ✕ to dive' : 'In goal: hold a direction, Z to dive') : '';
-      this.flash('', `${name}${hint ? ' · ' + tr(hint) : ''}`, 1600);
-      sfx.whistle();
-    } else if (kind === 'scored') { this.flash(tr('GOAL!'), name, 1000); if (team === 0) voices.roar(); else voices.applause(); }
-    else { this.flash(tr('SAVED!'), name, 1000); this.ooh(); if (team === 1) voices.applause(); }
-  }
-
-  // ───────────────────────── anime cutscene (Blue Lock style): freeze, panel, name, then the AI plays it
+  // ───────────────────────── anime cutscenes (./match/cutin.ts): freeze, cut-in, then the AI plays it
+  private actor(p: Player): Actor { return { sprite: p.def.sprite, color: this.m.teams[p.team].color, name: CAST[p.def.id]?.name ?? p.def.id }; }
   private cutscene(who: string, team: number) {
     const sp = SPECIALS[who]; if (!sp) { this.m.release(); return; }
     this.cutting = true;
-    const p = this.m.players.find(q => q.def.id === who)!;
-    const color = this.m.teams[team].color;
-    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(3000);
-    const dark = this.add.rectangle(0, 0, W, H, 0x000000, 0).setOrigin(0);
-    // a slanted band in the team's colour, with a white edge
-    const band = this.add.graphics();
-    band.fillStyle(0xffffff).fillPoints([{ x: -20, y: 58 }, { x: W + 20, y: 26 }, { x: W + 20, y: 214 }, { x: -20, y: 246 }].map(o => new Phaser.Math.Vector2(o.x, o.y)), true);
-    band.fillStyle(color).fillPoints([{ x: -20, y: 64 }, { x: W + 20, y: 32 }, { x: W + 20, y: 208 }, { x: -20, y: 240 }].map(o => new Phaser.Math.Vector2(o.x, o.y)), true);
-    band.fillStyle(0x1b1420, 0.35).fillPoints([{ x: -20, y: 64 }, { x: W + 20, y: 32 }, { x: W + 20, y: 208 }, { x: -20, y: 240 }].map(o => new Phaser.Math.Vector2(o.x, o.y)), true);
-    // speed lines rushing at the player
-    const lines = this.add.graphics();
-    const fx = 130, fy = 140;
-    const drawLines = () => {
-      lines.clear();
-      for (let i = 0; i < 46; i++) {
-        const a = Math.random() * Math.PI * 2, r0 = 60 + Math.random() * 60, r1 = r0 + 80 + Math.random() * 220;
-        lines.lineStyle(Math.random() < 0.3 ? 2 : 1, 0xffffff, 0.35 + Math.random() * 0.4);
-        lines.lineBetween(fx + Math.cos(a) * r0, fy + Math.sin(a) * r0, fx + Math.cos(a) * r1, fy + Math.sin(a) * r1);
-      }
-    };
-    drawLines();
-    const ticker = this.time.addEvent({ delay: 50, loop: true, callback: drawLines });
-    // the player: big portrait if we have one, else the sprite blown up
-    const hasFace = this.textures.exists(`${p.def.sprite}_face`) && who !== 'saif' && who !== 'abdallah';
-    const hero = hasFace ? this.add.image(-120, fy, `${p.def.sprite}_face`).setScale(5) : this.add.sprite(-120, fy + 10, p.def.sprite, 6).setScale(7).setFlipX(true);
-    const name = this.add.text(isAr() ? W - 30 : W - 30, 118, tr(sp.name), txt(16, { color: '#ffffff' })).setOrigin(1, 0.5).setScale(1.6).setAlpha(0).setStroke('#1b1420', 6);
-    const sub = this.add.text(W - 30, 150, tr(CAST[who]?.name ?? who), txt(8, { color: '#f2c94c' })).setOrigin(1, 0.5).setAlpha(0).setStroke('#1b1420', 4);
-    const flashRect = this.add.rectangle(0, 0, W, H, 0xffffff, 0).setOrigin(0);
-    c.add([dark, band, lines, hero, name, sub, flashRect]);
-    band.x = -W; lines.alpha = 0;
-    // whoosh in
-    tone(180, 0.35, 'sawtooth', 0.05, 1400);
-    this.tweens.add({ targets: dark, fillAlpha: 0.6, duration: 160 });
-    this.tweens.add({ targets: band, x: 0, duration: 220, ease: 'Cubic.out' });
-    this.tweens.add({ targets: lines, alpha: 1, duration: 200, delay: 120 });
-    this.tweens.add({ targets: hero, x: fx, duration: 260, delay: 80, ease: 'Back.out' });
-    // impact frame + the name slams in
-    this.time.delayedCall(380, () => {
-      flashRect.setFillStyle(0xffffff, 1); this.tweens.add({ targets: flashRect, fillAlpha: 0, duration: 140 });
-      sfx.hit(); this.cameras.main.shake(180, 0.006);
-      name.setAlpha(1).setScale(2.4); this.tweens.add({ targets: name, scale: 1.6, duration: 160, ease: 'Back.out' });
-      this.tweens.add({ targets: sub, alpha: 1, duration: 200, delay: 120 });
-      if (sp.kind === 'save') voices.hussein(); else this.ooh();
+    const p = this.m.players.find(q => q.def.id === who && q.team === team)!;
+    // duels: a tackle faces the man on the ball, a save faces whoever shot
+    const foeP = sp.kind === 'tackle' ? this.m.ball.owner : sp.kind === 'save' ? this.lastShooter : null;
+    const foe = foeP && foeP.team !== p.team ? this.actor(foeP) : undefined;
+    const quick = sp.kind === 'tackle' || sp.kind === 'save' || (this.m.pending?.kind === 'pass');
+    if (sp.kind === 'save') voices.hussein(); else this.ooh();
+    specialCutin(this, { hero: this.actor(p), move: sp.name, line: sp.line, foe, quick }, () => {
+      this.cutting = false; this.m.release(); this.acc = 0; this.prime();
+      this.slow = sp.kind === 'save' || sp.kind === 'tackle' ? 0.35 : 0.7;     // a beat of slow motion as it plays out
+      if (who === 'ibrahim' && this.teachersWatching.length) this.time.delayedCall(1600, () => this.bubbleAt(this.teachersWatching[2], tr('Miss Hager: ...was that for us?')));
+      if (who === 'saif') this.time.delayedCall(2600, () => this.bubbleFor('mostafa', 'That is my brother. Unfortunately.'));
     });
-    // and out: the AI plays the move
-    this.time.delayedCall(1750, () => {
-      this.tweens.add({ targets: [band, hero, name, sub, lines], x: `+=${W}`, duration: 220, ease: 'Cubic.in' });
-      this.tweens.add({
-        targets: dark, fillAlpha: 0, duration: 240, onComplete: () => {
-          ticker.remove(); c.destroy(); this.cutting = false; this.m.release(); this.acc = 0;
-          this.prime();
-        },
+  }
+
+  // ───────────────────────── the drama around the football
+  /** speech bubble over a player (by id), or over the coach / Hefny on the touchline */
+  private bubbleFor(id: string, text: string) {
+    if (!id) return;
+    const spr = id === 'mostafa' ? this.coach : id === 'hefny' ? this.hefny : (() => { const p = this.m.players.find(q => q.def.id === id); return p ? this.bodies.get(p)!.spr : null; })();
+    if (spr) this.bubbleAt(spr, tr(text));
+  }
+  private bubbleAt(target: Phaser.GameObjects.Sprite, text: string) {
+    if (this.time.now - this.lastBubble < 900) return;
+    this.lastBubble = this.time.now;
+    const t = this.add.text(0, 0, text, txt(8, { color: '#1b1420', wordWrap: { width: 150 }, align: 'center' })).setOrigin(0.5, 1);
+    const bg = this.add.rectangle(0, 4, t.width + 10, t.height + 9, 0xf4f0e8).setOrigin(0.5, 1).setStrokeStyle(1, 0x1b1420);
+    const tail = this.add.triangle(0, 6, -3, 0, 3, 0, 0, 4, 0xf4f0e8).setOrigin(0.5, 0);
+    const c = this.add.container(target.x, target.y - 28, [bg, tail, t]).setDepth(2400).setData('target', target);
+    this.bubbles.push(c);
+    c.setScale(0.2); this.tweens.add({ targets: c, scale: 1, duration: 140, ease: 'Back.out' });
+    this.time.delayedCall(1900, () => this.tweens.add({ targets: c, alpha: 0, duration: 200, onComplete: () => { c.destroy(); this.bubbles = this.bubbles.filter(x => x !== c); } }));
+  }
+  /** someone lost the ball: Saif shouts at his teammates (he does), the coach shouts at ours */
+  private onLost(who: string, team: number) {
+    if (this.time.now - this.lastBubble < 5000) return;
+    const mine = this.m.players.filter(p => p.team === team).map(p => p.def.id);
+    if (mine.includes('saif') && who !== 'saif') this.bubbleFor('saif', Phaser.Utils.Array.GetRandom(['PASS IT TO ME!', 'WHAT WAS THAT?!', 'Wake up! WAKE UP!', 'Give me the ball and stand there.']));
+    else if (team === 0 && Math.random() < 0.4) this.bubbleFor('mostafa', Phaser.Utils.Array.GetRandom(['Pass more, panic less!', 'Who is marking him?!', 'Shape! SHAPE!']));
+    else if (team === 1 && Math.random() < 0.3) this.bubbleFor('hefny', Phaser.Utils.Array.GetRandom(['YES! TAKE IT!', 'HUSSEIN IS WATCHING YOU!', 'Ole!']));
+  }
+  private afterGoal(team: 0 | 1) {
+    const ids = this.m.players.map(p => p.def.id);
+    if (team === 1 && ids.includes('saif')) this.bubbleFor('saif', 'Too easy, brother.');
+    else if (team === 0 && this.m.ball.last?.def.id === 'karim') this.bubbleFor('hefny', '...Fine. Good goal, Karim. FINE.');
+    else if (team === 0) this.bubbleFor('hefny', 'GOOOAL! Did you see that?!');
+    else if (ids.includes('nasser')) this.bubbleFor('nasser', 'Alhamdulillah. Again?');
+  }
+  /** Mr Amr blows his whistle: a free kick, and on the second foul, a yellow card */
+  private onFoul(who: string, team: number, card: boolean) {
+    sfx.whistle();
+    const name = tr(CAST[who]?.name ?? who);
+    if (!card) { this.flash(tr('FOUL!'), fmt('Mr Amr: free kick. {name}, careful.', { name }), 1400); this.bubbleAt(this.ref, tr('FOUL!')); return; }
+    const p = this.m.players.find(q => q.def.id === who && q.team === team);
+    const ref: Actor = { sprite: 'amr', color: 0xf08a2a, name: 'Mr Amr' };
+    this.cutting = true;
+    talkCutin(this, [
+      { who: ref, line: fmt('{name}! Yellow card. One more and you referee with me.', { name }), card: true },
+      ...(p ? [{ who: this.actor(p), line: Phaser.Utils.Array.GetRandom(['Me?! I touched the ball!', 'He fell on his own, sir!', 'Sir, I swear on my grades...']) }] : []),
+    ], () => { this.cutting = false; this.acc = 0; this.prime(); });
+  }
+  /** Hussein's knees: once a match, after a big save, they give in. Hefny runs on with ice. */
+  private maybeKnee(tries = 0) {
+    if (this.kneeDone || this.mode !== 'play' || this.m.half < 2 || Math.random() > 0.6) return;
+    if (this.cutting) { if (tries < 6) this.time.delayedCall(800, () => this.maybeKnee(tries + 1)); return; }
+    const h = this.m.players.find(p => p.def.id === 'hussein'); if (!h) return;
+    this.kneeDone = true;
+    this.time.delayedCall(700, () => {
+      if (this.cutting || this.mode !== 'play') { this.kneeDone = false; return; }
+      this.cutting = true;
+      const hs = this.bodies.get(h)!.spr, hx = this.hefny.x, hy = this.hefny.y;
+      this.tweens.add({ targets: this.hefny, x: hs.x - 10, y: hs.y, duration: 900 });
+      const hus = this.actor(h), hef: Actor = { sprite: 'hefny', color: 0x3e9a4f, name: 'Hefny' };
+      talkCutin(this, [
+        { who: hus, line: 'Aaah. My knee. MY KNEE.' },
+        { who: hef, line: 'ICE! I brought ice from the canteen! The auntie charged me for it!' },
+        { who: hus, line: 'My knee can wait.' },
+      ], () => {
+        this.tweens.add({ targets: this.hefny, x: hx, y: hy, duration: 700 });
+        voices.hussein(); this.chant();
+        this.cutting = false; this.acc = 0; this.prime();
       });
+    });
+  }
+  /** the coach's half-time talk: pick the plan for the second half */
+  private halfTimeTalk() {
+    if (this.kind === 'versus') { this.cutting = false; return; }
+    const [a, b] = this.m.score;
+    const lead = a > b ? "We're winning. Nobody relax. Especially you, Karim." : a < b ? "We're losing. Fine. We have five minutes and Hussein's knees." : 'Level. They are scared of us. I think. Probably.';
+    const mostafa: Actor = { sprite: 'mostafa', color: 0x3b6fd1, name: 'Mostafa' }, hef: Actor = { sprite: 'hefny', color: 0x3e9a4f, name: 'Hefny' };
+    talkCutin(this, [
+      { who: mostafa, line: lead },
+      { who: hef, line: a < b ? 'I will chant louder. That is my tactic.' : 'Second half, new chant. Same word. HUSSEIN.' },
+    ], () => {
+      this.mode = 'talk'; bridgeOnly(null);
+      this.showPanel(tr('HALF TIME · COACH MOSTAFA'), tr('The plan for the second half?'), ['ATTACK', 'BALANCED', 'DEFEND']);
+      this.menuSel = 1; this.renderMenu();
+    });
+  }
+  private setTactic(o: string) {
+    this.m.tactic[0] = o === 'ATTACK' ? 1 : o === 'DEFEND' ? -1 : 0;
+    const [a, b] = this.m.score;
+    this.m.tactic[1] = b < a ? 1 : 0;                        // the other coach: chase the game if behind
+    this.clearPanel(); this.mode = 'play'; bridgeOnly([START]);
+    this.flash('', tr(o === 'ATTACK' ? 'Everyone forward! (more pressing, more shots)' : o === 'DEFEND' ? 'Park the tractor. (sit deep, pick your moments)' : 'Same as before. It works.'), 1600);
+    this.cutting = false; this.acc = 0; this.prime();
+  }
+  /** the last minute of a close game: the banner, the heartbeat, the crowd on its feet */
+  private drama() {
+    const m = this.m;
+    if (this.mode !== 'play' || this.lastMinute || m.half !== 2 || m.phase !== 'play') return;
+    if (m.clock > m.halfSeconds - 30 && Math.abs(m.score[0] - m.score[1]) <= 1) {
+      this.lastMinute = true;
+      this.flash(tr('LAST MINUTE!'), m.score[0] === m.score[1] ? tr('Level. Somebody be a hero.') : m.score[0] > m.score[1] ? tr('Hold on. HOLD ON.') : tr('One goal. We need one goal.'), 2000);
+      for (let i = 0; i < 8; i++) { tone(60, 0.12, 'sine', 0.25, 40, i * 0.6); tone(55, 0.1, 'sine', 0.18, 38, i * 0.6 + 0.16); }
+      this.jumpCrowd(4);
+      this.bubbleFor('hefny', 'EVERYBODY STAND UP!');
+    }
+  }
+  /** knockout draw: the shootout on its own front-view screen */
+  private startShootout() {
+    const two = this.kind !== 'solo' && this.padCount >= 1;
+    this.mode = 'play';
+    this.shootout = new Shootout(this, {
+      teams: this.m.teams,
+      shooterSlot: t => t === 0 ? 0 : this.kind === 'versus' && two ? 1 : -1,
+      keeperSlot: t => t === 0 ? (this.kind === 'coop' && two ? 1 : 0) : this.kind === 'versus' && two ? 1 : -1,
+      read: () => readSlots(two),
+    }, kicks => {
+      this.shootout = null;
+      this.m.finishPens(kicks);
+      this.cutting = false;
+      this.end();
     });
   }
 

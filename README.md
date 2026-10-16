@@ -182,7 +182,7 @@ npm run dev        # → http://localhost:5173
 ## 🛠️ How it's made
 
 - **Every sprite is hand-authored pixel by pixel in code** (`tools/art/*.mjs`) and baked to PNGs. No pixel is drawn at runtime.
-- **No audio files.** The music is chiptune written as note strings using Arabic maqam scales and a darbuka. The character voices are synthesised grunts (`src/systems/music.ts`, `src/systems/sfx.ts`).
+- **Almost no audio files.** The music is chiptune written as note strings using Arabic maqam scales and a darbuka. The character voices are synthesised grunts (`src/systems/music.ts`, `src/systems/sfx.ts`). The football season adds ten small CC0 samples from [Kenney](https://kenney.nl) (kicks, the post, cutscene hits) in `public/assets/sfx/`.
 - **The story is a screenplay.** Each chapter is one file of async scripts (`src/data/story/chN.ts`). Dialogue, quests and the world changing over the day all live there.
 - **Automated playtests** drive the whole game in a headless browser (keyboard and simulated controller), take screenshots and check every chapter can be finished.
 - Phaser 4 + TypeScript + Vite. One runtime dependency.

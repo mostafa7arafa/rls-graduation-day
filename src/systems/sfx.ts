@@ -1,4 +1,5 @@
-// All sound is synthesized with WebAudio — no audio files to license or load.
+// Almost all sound is synthesized with WebAudio. The exception: a few CC0 samples from Kenney
+// (kenney.nl, public domain) in public/assets/sfx/ for football punch: kicks, the post, cutscene hits.
 // Each speaker has a "voice" pitch for the typewriter blips (Undertale-style) and for reaction grunts.
 // Routing: every sound -> sfxBus | musicBus -> master -> speakers. Mute just zeroes master.
 let ctx: AudioContext | null = null;
@@ -52,6 +53,28 @@ export function noise(dur: number, vol = 0.08, delay = 0, out?: AudioNode, highp
   let node: AudioNode = s;
   if (highpass) { const f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = highpass; s.connect(f); node = f; }
   node.connect(g).connect(out ?? sfxBus); s.start(t);
+}
+
+// ── samples (Kenney CC0). Loaded once, played through the sfx bus so mute still works.
+export const SAMPLES = ['whoosh', 'impact', 'boom', 'charge', 'kick', 'shot', 'post', 'slam', 'zip', 'tackle'] as const;
+export type Sample = typeof SAMPLES[number];
+const buffers = new Map<string, AudioBuffer>();
+let loading: Promise<void> | null = null;
+export function loadSamples(base = 'assets/sfx/') {
+  const a = audio(); if (!a || loading) return loading;
+  loading = Promise.all(SAMPLES.map(async n => {
+    try { const r = await fetch(`${base}${n}.ogg`); buffers.set(n, await a.decodeAudioData(await r.arrayBuffer())); } catch { /* the synth fallback plays */ }
+  })).then(() => undefined);
+  return loading;
+}
+/** play a sample; returns false if it isn't loaded (callers can fall back to a synth sound) */
+export function sample(n: Sample, vol = 0.6, rate = 1, delay = 0): boolean {
+  const a = audio(), b = buffers.get(n); if (!a || !b) return false;
+  if (muted) return true;
+  const s = a.createBufferSource(), g = a.createGain();
+  s.buffer = b; s.playbackRate.value = rate; g.gain.value = vol;
+  s.connect(g).connect(sfxBus); s.start(a.currentTime + delay);
+  return true;
 }
 
 export type Reaction = '!' | '?' | '<3' | '...' | '#' | 'laugh' | 'noo' | 'ow';
