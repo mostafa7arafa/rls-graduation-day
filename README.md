@@ -17,7 +17,13 @@
 
 <br/>
 
-<img src="docs/media/hero.gif" width="720" alt="Gameplay montage" />
+<a href="https://mostafa7arafa.github.io/rls-graduation-day/"><img src="https://img.shields.io/badge/%E2%96%B6%20PLAY%20IN%20YOUR%20BROWSER-f2c94c?style=for-the-badge&labelColor=1b1420&logoColor=1b1420" height="44" alt="Play in your browser" /></a>
+
+<sub>Desktop browser · keyboard or Xbox / PlayStation controller · no install</sub>
+
+<br/><br/>
+
+<a href="https://mostafa7arafa.github.io/rls-graduation-day/"><img src="docs/media/hero.gif" width="720" alt="Gameplay montage" /></a>
 
 <br/>
 
@@ -145,6 +151,10 @@ Plug a controller in at any time. The on-screen hints switch to your controller'
 ---
 
 ## 🚀 Run it
+
+**Just play:** https://mostafa7arafa.github.io/rls-graduation-day/
+
+Or run it locally:
 
 ```bash
 git clone https://github.com/mostafa7arafa/rls-graduation-day.git
