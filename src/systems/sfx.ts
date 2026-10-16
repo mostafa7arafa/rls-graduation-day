@@ -96,6 +96,7 @@ export const sfx = {
     }
   },
 
+  isMuted: () => muted,
   toggleMute: () => {
     muted = !muted;
     if (ctx) master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.03);

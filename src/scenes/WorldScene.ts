@@ -332,7 +332,10 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private persist() {
+  /** the pause menu only opens while the boys are free to walk around */
+  canPause() { return !this.cutscene && !this.ending && !this.ui.busy; }
+
+  persist() {
     if (this.ending) return;
     const L = this.leader, d = L.getData('dir') as Dir;
     state.map = this.mapId;

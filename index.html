@@ -2,19 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1b1420" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="RLS" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./assets/hussein_face.png" />
   <title>RLS: Graduation Day</title>
   <link rel="icon" href="./assets/hussein_face.png" />
   <style>
     @font-face { font-family: 'PressStart'; src: url('./assets/fonts/PressStart2P.ttf'); }
     @font-face { font-family: 'NotoKufi'; src: url('./assets/fonts/NotoKufiArabic-Regular.ttf'); }
-    html, body { margin: 0; height: 100%; background: #1b1420; overflow: hidden; }
-    #game { width: 100vw; height: 100vh; }
+    html, body { margin: 0; height: 100%; background: #1b1420; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
+    body { position: fixed; inset: 0; }
+    #game { width: 100vw; height: 100vh; height: 100dvh; }
+    /* phones held upright: ask to rotate */
+    #rotate { display: none; position: fixed; inset: 0; z-index: 20; background: #1b1420; color: #f2c94c; font: 12px/2 PressStart, monospace;
+      flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 18px; }
+    #rotate .phone { width: 46px; height: 78px; border: 4px solid #f4f0e8; border-radius: 8px; animation: turn 1.8s ease-in-out infinite; }
+    #rotate .ar { font: 16px NotoKufi, sans-serif; color: #f4f0e8; direction: rtl; }
+    @keyframes turn { 0%, 25% { transform: rotate(0) } 60%, 100% { transform: rotate(-90deg) } }
+    @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
     canvas { image-rendering: pixelated; }
   </style>
 </head>
 <body>
   <div id="game"></div>
+  <div id="rotate"><div class="phone"></div><div>Turn your phone sideways</div><div class="ar">لِف الموبايل بالعرض</div></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

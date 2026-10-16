@@ -49,7 +49,7 @@ export class TitleScene extends Phaser.Scene {
     kb.on('keydown-UP', () => move(-1)); kb.on('keydown-DOWN', () => move(1));
     kb.on('keydown-W', () => move(-1)); kb.on('keydown-S', () => move(1));
     const go = () => this.start();
-    kb.on('keydown-ENTER', go); kb.on('keydown-Z', go); kb.on('keydown-SPACE', go);
+    kb.on('keydown-ENTER', go); kb.on('keydown-Z', go); kb.on('keydown-SPACE', go); kb.on('keydown-ESC', go); // Esc = a controller's Start
     this.input.once('pointerdown', go);
   }
 

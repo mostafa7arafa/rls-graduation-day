@@ -11,9 +11,16 @@ export const CH1: Record<string, string> = {
   "Canteen Auntie": "طنط الكانتين",
 
   // ── HUD / title / toasts
-  "TAB swap · Z talk · M mute": "TAB تبديل · Z كلام · M صوت",
+  "TAB swap · Z talk · ESC menu": "TAB تبديل · Z كلام · ESC القايمة",
+  "PAUSED": "واقفين شوية",
+  "RESUME": "كمّل",
+  "SOUND: ON": "الصوت: شغّال",
+  "SOUND: OFF": "الصوت: مقفول",
+  "TITLE SCREEN": "الشاشة الرئيسية",
+  "Left thumb: walk · hold RUN to run · SWAP changes the leader · A: talk & inspect · MENU: pause": "صباعك الشمال: مشي · دوس RUN عشان تجري · SWAP يغيّر اللي قدام · A: كلّم وافحص · MENU: وقفة",
   "RB swap · A talk · X run": "RB تبديل · A كلام · X جري",
   "R1 swap · CROSS talk · SQUARE run": "R1 تبديل · ✕ كلام · ▢ جري",
+  "SWAP leader · A talk · tap to read on": "SWAP تبديل · A كلام · المس عشان تكمّل",
   "Controller connected!": "الدراع اتوصّل!",
   "Controller disconnected": "الدراع اتفصل",
   "Sound OFF": "الصوت مقفول",
@@ -37,7 +44,7 @@ export const CH1: Record<string, string> = {
   "That's it. Twelve years. We are FREE.": "خلاص. اتناشر سنة. إحنا أحراااار.",
   "I'm actually going to miss the chemistry lab.": "بصراحة معمل الكيميا هيوحشني.",
   "I'm going to miss nothing. Not one thing. Let's go home before they change their minds.": "وأنا ولا حاجة هتوحشني. ولا حاجة. يلا نروّح قبل ما يغيّروا رأيهم.",
-  "ARROWS/WASD walk · SHIFT run · TAB swap leader · Z talk & inspect": "الأسهم/WASD مشي · SHIFT جري · TAB غيّر اللي قدام · Z كلّم وافحص",
+  "ARROWS/WASD walk · SHIFT run · TAB swap leader · Z talk & inspect · ESC menu": "الأسهم/WASD مشي · SHIFT جري · TAB غيّر اللي قدام · Z كلّم وافحص · ESC القايمة",
   "Tip: people react differently depending on who leads. Try everyone.": "نصيحة: الناس بترد بشكل مختلف حسب مين اللي ماشي قدام. جرّبوا الكل.",
 
   // ── Mr Hassan

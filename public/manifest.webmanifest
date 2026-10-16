@@ -1,0 +1,11 @@
+{
+  "name": "RLS: Graduation Day",
+  "short_name": "RLS",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1b1420",
+  "theme_color": "#1b1420",
+  "icons": [{ "src": "assets/hussein_face.png", "sizes": "any", "type": "image/png" }]
+}

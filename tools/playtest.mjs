@@ -165,6 +165,12 @@ const scenarios = {
     await shot('pad-swap');
     const hint = await page.evaluate(() => window.game.scene.getScene('ui').hint.text);
     console.log('pad: walked', Math.round(after - before), 'px · leader after RB:', leader, '· hint:', hint);
+    // Start opens the pause menu, B closes it, and the world walks again
+    const menuOpen = () => page.evaluate(() => !!window.game.scene.getScene('ui').menu);
+    await pad(9); await wait(400); const opened = await menuOpen(); await shot('pad-menu');
+    await pad(1); await wait(400); const closed = !(await menuOpen());
+    await page.keyboard.press('Escape'); await wait(400); const escOpened = await menuOpen(); await page.keyboard.press('Escape'); await wait(300);
+    console.log('menu: Start opens', opened, '· B closes', closed, '· Esc opens', escOpened);
   },
 
   async ch3() {

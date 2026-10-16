@@ -7,6 +7,7 @@ import type { Script, Npc, Spot } from './types';
 import { LATER } from './recurring';
 import { start as chapter2Start } from './ch2';
 import { benchTalk } from './bench';
+import { touchActive } from '../../systems/touch';
 
 export function objective(): string {
   if (flag('gate_open')) return 'Leave RLS. For real this time.';
@@ -26,7 +27,7 @@ export const intro: Script = async (c) => {
   await c.say('mostafa', "That's it. Twelve years. We are FREE.");
   await c.say('hefny', "I'm actually going to miss the chemistry lab.");
   await c.say('hussein', "I'm going to miss nothing. Not one thing. Let's go home before they change their minds.");
-  await c.say('narrator', 'ARROWS/WASD walk · SHIFT run · TAB swap leader · Z talk & inspect');
+  await c.say('narrator', touchActive() ? 'Left thumb: walk · hold RUN to run · SWAP changes the leader · A: talk & inspect · MENU: pause' : 'ARROWS/WASD walk · SHIFT run · TAB swap leader · Z talk & inspect · ESC menu');
   await c.say('narrator', 'Tip: people react differently depending on who leads. Try everyone.');
 };
 

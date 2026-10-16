@@ -3,13 +3,13 @@
 // (Phaser reads `keyCode`, menus/minigames read `key`), so every menu and minigame works as-is.
 //
 //   D-pad / left stick -> arrows      A / Cross  -> Z (talk, confirm)    B / Circle -> X (back)
-//   X / Square, R2      -> Shift (run) LB / RB / L1 / R1 -> Tab (swap)    Start / Options -> Enter
+//   X / Square, R2      -> Shift (run) LB / RB / L1 / R1 -> Tab (swap)    Start / Options -> Esc (menu)
 //   Back / Share        -> M (mute)
 
-interface Bind { key: string; code: string; keyCode: number }
+export interface Bind { key: string; code: string; keyCode: number }
 const K = (key: string, code: string, keyCode: number): Bind => ({ key, code, keyCode });
-const UP = K('ArrowUp', 'ArrowUp', 38), DOWN = K('ArrowDown', 'ArrowDown', 40), LEFT = K('ArrowLeft', 'ArrowLeft', 37), RIGHT = K('ArrowRight', 'ArrowRight', 39);
-const OK = K('z', 'KeyZ', 90), BACK = K('x', 'KeyX', 88), RUN = K('Shift', 'ShiftLeft', 16), SWAP = K('Tab', 'Tab', 9), START = K('Enter', 'Enter', 13), MUTE = K('m', 'KeyM', 77);
+export const UP = K('ArrowUp', 'ArrowUp', 38), DOWN = K('ArrowDown', 'ArrowDown', 40), LEFT = K('ArrowLeft', 'ArrowLeft', 37), RIGHT = K('ArrowRight', 'ArrowRight', 39);
+export const OK = K('z', 'KeyZ', 90), BACK = K('x', 'KeyX', 88), RUN = K('Shift', 'ShiftLeft', 16), SWAP = K('Tab', 'Tab', 9), START = K('Escape', 'Escape', 27), MUTE = K('m', 'KeyM', 77);
 
 /** which logical keys are held on this pad (standard mapping) */
 function read(p: Gamepad): Bind[] {
@@ -29,7 +29,7 @@ function read(p: Gamepad): Bind[] {
   return held;
 }
 
-function fire(type: 'keydown' | 'keyup', k: Bind) {
+export function fire(type: 'keydown' | 'keyup', k: Bind) {
   const e = new KeyboardEvent(type, { key: k.key, code: k.code, bubbles: true, cancelable: true });
   // keyCode/which are read-only in the constructor; Phaser still keys off them
   Object.defineProperty(e, 'keyCode', { get: () => k.keyCode });

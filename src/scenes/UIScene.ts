@@ -2,8 +2,9 @@ import * as Phaser from 'phaser';
 import { CAST } from '../data/cast';
 import { sfx } from '../systems/sfx';
 import { W, H, FONT } from '../config';
-import { tr, txt, isAr, num } from '../systems/i18n';
+import { tr, txt, isAr, num, setLang } from '../systems/i18n';
 import { padStyle } from '../systems/gamepad';
+import { touchActive } from '../systems/touch';
 
 // Always-on-top overlay: dialogue box, choices, toasts, objective + leader HUD.
 // Scripts talk to it through say()/choose() which return Promises.
@@ -27,10 +28,14 @@ export class UIScene extends Phaser.Scene {
   private confirmCb: (() => void) | null = null;
   private navCb: ((d: number) => void) | null = null;
   busy = false;
+  private menu?: Phaser.GameObjects.Container;
+  private menuItems: Phaser.GameObjects.Text[] = [];
+  private menuSel = 0;
 
   constructor() { super('ui'); }
 
-  create() {
+  create(data?: { menu?: number }) {
+    this.menu = undefined;
     const bx = 8, by = H - 78, bw = W - 16, bh = 70, ar = isAr();
     const bg = this.add.rectangle(bx, by, bw, bh, 0x1b1420, 0.94).setOrigin(0).setStrokeStyle(2, 0xf4f0e8);
     const inner = this.add.rectangle(bx + 3, by + 3, bw - 6, bh - 6).setOrigin(0).setStrokeStyle(1, 0x4a3c43);
@@ -66,8 +71,65 @@ export class UIScene extends Phaser.Scene {
     kb.on('keydown-UP', () => this.navCb?.(-1)); kb.on('keydown-W', () => this.navCb?.(-1));
     kb.on('keydown-DOWN', () => this.navCb?.(1)); kb.on('keydown-S', () => this.navCb?.(1));
     this.input.on('pointerdown', confirm); // tap to advance on phones
+    kb.on('keydown-ESC', () => this.menu ? this.closeMenu() : this.openMenu());
+    kb.on('keydown-X', () => { if (this.menu) this.closeMenu(); });
     this.busy = false; this.confirmCb = null; this.navCb = null;
     this.scene.launch('world');
+    // after a language switch the menu comes straight back, in the new language
+    if (data?.menu !== undefined) { const sel = data.menu; this.time.delayedCall(300, () => this.openMenu(sel)); }
+  }
+
+  // ───────────────────────────────────────── pause menu (ESC / Start / MENU)
+  // ids, not display text (labels are built in renderMenu)
+  private static readonly NO_TR_MENU = ['RESUME', 'LANGUAGE', 'SOUND', 'TITLE SCREEN'] as const;
+
+  openMenu(sel = 0) {
+    const world = this.scene.get('world') as unknown as { canPause(): boolean };
+    if (this.menu || this.busy || !this.scene.isActive('world') || !world.canPause()) return;
+    this.scene.pause('world');
+    sfx.select();
+    const h = 30 + UIScene.NO_TR_MENU.length * 18;
+    const panel = this.add.rectangle(W / 2, H / 2, 240, h, 0x1b1420, 0.96).setStrokeStyle(2, 0xf2c94c);
+    const dim = this.add.rectangle(0, 0, W, H, 0x000000, 0.45).setOrigin(0);
+    const title = this.add.text(W / 2, H / 2 - h / 2 + 12, tr('PAUSED'), txt(8, { color: '#f2c94c' })).setOrigin(0.5);
+    this.menuItems = UIScene.NO_TR_MENU.map((_, i) => this.add.text(W / 2, H / 2 - h / 2 + 32 + i * 18, '', txt(8, { color: '#f4f0e8' })).setOrigin(0.5));
+    this.menu = this.add.container(0, 0, [dim, panel, title, ...this.menuItems]).setDepth(200);
+    this.menuSel = sel; this.renderMenu();
+    this.navCb = (d) => { this.menuSel = (this.menuSel + d + this.menuItems.length) % this.menuItems.length; sfx.move(); this.renderMenu(); };
+    this.confirmCb = () => this.pickMenu();
+  }
+
+  private renderMenu() {
+    const muted = sfx.isMuted();
+    this.menuItems.forEach((t, i) => {
+      const o = UIScene.NO_TR_MENU[i];
+      // like the title screen, the language line shows the current language in its own script
+      const label = o === 'LANGUAGE' ? (isAr() ? 'اللغة: مصري' : 'LANGUAGE: ENGLISH') : o === 'SOUND' ? tr(muted ? 'SOUND: OFF' : 'SOUND: ON') : o === 'TITLE SCREEN' ? tr('TITLE SCREEN') : tr('RESUME');
+      const on = i === this.menuSel;
+      t.setText(on ? (isAr() ? `◀ ${label} ▶` : `▶ ${label} ◀`) : label).setColor(on ? '#f2c94c' : '#f4f0e8');
+    });
+  }
+
+  private pickMenu() {
+    const o = UIScene.NO_TR_MENU[this.menuSel];
+    const world = this.scene.get('world') as unknown as { persist(): void };
+    if (o === 'RESUME') return this.closeMenu();
+    if (o === 'SOUND') { sfx.toggleMute(); sfx.select(); return this.renderMenu(); }
+    world.persist();
+    this.input.keyboard!.removeAllListeners(); this.input.removeAllListeners();
+    this.scene.stop('world');
+    if (o === 'LANGUAGE') { setLang(isAr() ? 'en' : 'ar'); this.scene.restart({ menu: this.menuSel }); return; }
+    sfx.select();
+    this.scene.start('title'); // progress is saved: CONTINUE, NEW GAME and LANGUAGE live there
+  }
+
+  closeMenu() {
+    if (!this.menu) return;
+    this.menu.destroy(); this.menu = undefined;
+    this.navCb = null; this.confirmCb = null;
+    sfx.move();
+    // resume a beat later so the key that closed the menu doesn't also reach the world
+    this.time.delayedCall(60, () => this.scene.resume('world'));
   }
 
   setLeader(who: string) {
@@ -163,7 +225,7 @@ export class UIScene extends Phaser.Scene {
   /** controls hint for keyboard, Xbox or PlayStation (called again when a controller connects) */
   refreshHint(announce = false) {
     const style = padStyle();
-    this.hint.setText(tr(style === 'playstation' ? 'R1 swap · CROSS talk · SQUARE run' : style === 'xbox' ? 'RB swap · A talk · X run' : 'TAB swap · Z talk · M mute'));
+    this.hint.setText(tr(style === 'playstation' ? 'R1 swap · CROSS talk · SQUARE run' : style === 'xbox' ? 'RB swap · A talk · X run' : touchActive() ? 'SWAP leader · A talk · tap to read on' : 'TAB swap · Z talk · ESC menu'));
     if (announce) this.toast(style ? 'Controller connected!' : 'Controller disconnected');
   }
 
