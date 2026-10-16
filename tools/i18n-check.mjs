@@ -1,9 +1,11 @@
-// Checks src/data/ar.ts against the English strings in the code.
+// Checks src/data/ar/*.ts against the English strings in the code.
 // Usage: node tools/i18n-check.mjs   -> lists display strings with no Arabic, and Arabic keys whose English is gone.
 import ts from 'typescript';
 import { readFileSync, readdirSync } from 'node:fs';
 
-const FILES = ['src/data/story.ts', 'src/data/cast.ts', ...readdirSync('src/scenes').map(f => `src/scenes/${f}`)];
+// every .ts under src/data/story and src/scenes (recursively), plus the cast
+const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(`${d}/${e.name}`) : e.name.endsWith('.ts') ? [`${d}/${e.name}`] : []);
+const FILES = [...walk('src/data/story'), 'src/data/cast.ts', ...walk('src/scenes')];
 // strings that are code, not text shown to players
 const IGNORE = /^(#[0-9a-f]{3,8}|[a-z][A-Za-z0-9_]*(-[a-z0-9]+)*|[A-Z]+(,[A-Z]+)+|keydown-\w+|\w+\.\w+|assets\/.*|\.\.?\/.*|[!?#.<3]+|\d+px|[▼▶◀♥Z ]+|LANGUAGE: ENGLISH|LANGUAGE|RLS)$/;  // last three: shown as-is on purpose
 
@@ -22,13 +24,12 @@ for (const file of FILES) {
   visit(src);
 }
 
-const arSrc = ts.createSourceFile('ar.ts', readFileSync('src/data/ar.ts', 'utf8'), ts.ScriptTarget.Latest, true);
 const keys = new Set();
 const grab = (n) => { if (ts.isPropertyAssignment(n) && ts.isStringLiteral(n.name)) keys.add(n.name.text); ts.forEachChild(n, grab); };
-grab(arSrc);
+for (const f of walk('src/data/ar')) grab(ts.createSourceFile(f, readFileSync(f, 'utf8'), ts.ScriptTarget.Latest, true));
 
 const missing = [...used].filter(s => !keys.has(s));
 const stale = [...keys].filter(k => !used.has(k));
 if (missing.length) console.log(`MISSING Arabic (${missing.length}):\n` + missing.map(s => '  ' + JSON.stringify(s)).join('\n'));
 if (stale.length) console.log(`STALE keys, English no longer in code (${stale.length}):\n` + stale.map(s => '  ' + JSON.stringify(s)).join('\n'));
-if (!missing.length && !stale.length) console.log(`ar.ts complete: ${keys.size} strings`);
+if (!missing.length && !stale.length) console.log(`Arabic complete: ${keys.size} strings`);

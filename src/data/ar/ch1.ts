@@ -1,7 +1,6 @@
-// Egyptian Arabic (Masri) for every display string. Key = the exact English text used in the code.
-// Adapt the joke, don't translate word for word. Edited an English line? Update its key here too —
-// `node tools/i18n-check.mjs` lists anything missing or stale.
-export const AR: Record<string, string> = {
+// Egyptian Arabic (Masri) for Chapter 1 + shared UI. Key = the exact English text used in the code.
+// Adapt the joke, do not translate word for word. `node tools/i18n-check.mjs` lists anything missing or stale.
+export const CH1: Record<string, string> = {
   // ── cast
   "Mostafa": "مصطفى",
   "Hussein": "حسين",
@@ -146,7 +145,6 @@ export const AR: Record<string, string> = {
   "\"ATTENTION. Would Hussein, Mostafa and Mohamed Hefny return to the mosque corner.\"": "\"انتباه. على الطلبة حسين ومصطفى ومحمد حفني الرجوع لركن المسجد.\"",
   "\"Sheikh Nasser has prepared... a QUIZ.\"": "\"الشيخ ناصر محضّرلكوا... كويز.\"",
   "NOOOOOOOOOOOOO": "لاااااااااااااا",
-  "RLS: GRADUATION DAY — Chapter 1 complete. To be continued...": "يوم التخرج — خلص الفصل الأول. يتبع...",
 
   // ── Mr Hassan encounter
   "FINAL EXAM\nHussein: SEE ME\n2 + 2 = ?\n(Hefny: 4)": "امتحان نهائي\nحسين: قابلني\n٢ + ٢ = ؟\n(حفني: ٤)",

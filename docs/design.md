@@ -19,15 +19,21 @@
 ## Chapter 1 (built, v0.1)
 Bell rings → gate chained ("no student leaves with unfinished business") → Mr Abdelfattah hints Mr Hassan has the key and loves his oud perfume → Mr Hassan encounter (chalk rain, green stick sweeps, oud clouds) → key → gate → street → PA: "Sheikh Nasser has prepared... a QUIZ." Side jokes: library closed since 2009, Hussein's filing drawer, Karim's car parked *inside*, Hussein's goal, the swings, the warm water cooler, the taboor flagpole, canteen auntie's 2019 debt, Habeba.
 
-## Roadmap (each chapter = one teacher, one new mechanic)
-| Ch | Teacher | Encounter mechanic | Notes |
-|---|---|---|---|
-| 2 | **Sheikh Nasser** (mosque corner) | **Quiz battle** — multiple choice where his "correct" answers are confidently wrong; you must answer what *he* thinks | First floor unlock. Great for Claude-written question packs |
-| 3 | **Mr Yasser** (English) | **Spelling bullet-hell** — misspelled words fly at you; dodge wrong ones, catch right ones | He bullied Hussein → Hussein's revenge chapter |
-| 4 | **Mr Abdo & Mr Ahmed Rezk** (science lab) | **Double boss / lab puzzle** — mix chemicals; Hefny's chapter (he loves science) | Hefny solo segment |
-| 5 | **Mr Abdelkareem** (math, greedy) | **Bargaining boss** — economy: pay for "private lessons" or haggle; ful sandwiches are currency | Hefny hates math: rage meter matters |
-| 6 | **Mr Amr** (gym) | **Rhythm / QTE** push-ups & laps | Comic relief chapter |
-| Finale | **Karim** | **Penalty shootout on the court**, Hussein in goal | Callback to the court hub, Habeba watching. Hefny's final rage |
+## The full story (v1.0 plan)
+**Spine: the إخلاء طرف (clearance form).** After Chapter 1's PA call, the boys learn no student leaves RLS without a clearance form signed by every department — the most Egyptian bureaucracy joke possible. The HUD shows the signatures. Each chapter = one signature = one teacher = one new mechanic. Running gag: the gate note updates ("Unfinished business remaining: 4").
+
+| Ch | Where | Teacher | Mechanic | Beat |
+|---|---|---|---|---|
+| 1 ✓ | Ground floor | Mr Hassan | ACT / dodge / MERCY | The key. "You were my favourite disaster." |
+| 2 | Prayer room (ground) | Sheikh Nasser | **Quiz** — answer what *he* believes (confidently wrong general knowledge, never religion itself). Lifelines: Mostafa googles it (crosses out the *true* answer), Hussein looks pitiful (hint), Hefny corrects him (always backfires) | He hands over the clearance form + the stairwell key (stairs locked "since Hussein's 2016 incident") |
+| 3 | 1st floor, English class | Mr Yasser | **Spelling rain** — catch correctly spelled words, dodge misspellings | Hussein's revenge: the one word he can spell perfectly is TRACTOR |
+| 4 | 1st floor, science lab | Mr Abdo & Mr Ahmed Rezk | **Lab mixing puzzle**, two teachers giving contradicting orders. Hefny goes in **alone** (the others are banned) | "Doctor Hefny." His hair gets bigger with every explosion |
+| 5 | 1st floor, math class | Mr Abdelkareem | **Haggling** — he sells his signature as a "private lesson"; ful sandwiches are currency (collect them around the school first) | Hefny's math rage is a resource that can blow the deal |
+| 6 | The court | Mr Amr | **Rhythm** push-ups / laps on the darbuka beat | Hussein pulls every muscle he has |
+| 7 | The court | **Karim** | **Penalty shootout**, Hussein in goal, Habeba watching | Karim "bought" the principal's stamp. Win it back; Karim admits he never had friends like these three |
+| End | The gate | — | — | Mr Abdelfattah reveals he set the whole day up ("twelve years and you were going to leave without saying goodbye to anyone"). Karim's car is parked inside, blocking everything — **Hussein's tractor** tows it out and the three ride out of RLS on it. Credits: every teacher's farewell line |
+
+Supporting NPCs: Mr Ibrahim (social studies, friendly guide on the 1st floor), Misses Doaa / Shimaa / Hager (teachers' lounge gossip), canteen auntie, Habeba.
 
 ## Ideas bank (from research — pick, don't do all)
 - **Friend-specific overworld abilities** (Zelda-style gating): Hussein dives (reach things under desks / through gaps), Hefny's rage shoves stuck doors and lockers, Mostafa hacks the PA/projector/phone. Gates progress on swapping leaders, not just jokes.

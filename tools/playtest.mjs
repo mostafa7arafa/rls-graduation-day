@@ -49,7 +49,54 @@ const battle = (fn) => page.evaluate(fn);
 const phase = () => page.evaluate(() => window.game.scene.getScene('battle').phase);
 const pressUntilPhase = async (want, max = 30) => { for (let i = 0; i < max && (await phase()) !== want; i++) { await tap('z', 1, 60); await wait(350); } };
 
+// start from a save: flags/items/position, then CONTINUE from the title screen
+const fromSave = async (st) => {
+  await page.evaluate(([s, l]) => { localStorage.clear(); localStorage.setItem('rls-lang', l); localStorage.setItem('rls-save', JSON.stringify(s)); }, [st, lang]);
+  await page.reload(); await wait(1500); await tap('Enter'); await wait(1500);
+};
+const save = (flags, items, map, x, y, dir = 'down', leader = 'mostafa') =>
+  ({ version: 2, flags: { intro_done: true, ...flags }, items, leader, map, x: x * 16 + 8, y: y * 16 + 12, dir });
+const CH1_DONE = { gate_seen: true, talked_abdel: true, met_abdel: true, hint_perfume: true, hassan_beaten: true, got_sandwich: true };
+const sceneActive = (k) => page.evaluate((k) => window.game.scene.isActive(k), k);
+
 const scenarios = {
+  async ch2() {
+    await fromSave(save({ ...CH1_DONE, chapter: 2 }, ['key'], 'ground', 21, 36, 'down'));
+    await shot('ch2-start');
+    await tap('z'); await wait(1200); await shot('nasser-talk'); await advance(20);
+    await wait(1200); await shot('quiz-intro');
+    const qs = await page.evaluate(() => window.game.scene.getScene('quiz').constructor.QUESTIONS.map(q => q.his));
+    const answered = new Set(); let lifelines = 0;
+    for (let i = 0; i < 400 && await sceneActive('quiz'); i++) {
+      const st = await page.evaluate(() => { const q = window.game.scene.getScene('quiz'); return { idx: q.qIndex, pick: q.pick?.visible }; });
+      if (st.pick && !answered.has(st.idx)) {
+        if (st.idx === 0 && lifelines < 3) { // try each lifeline once on question 1
+          await shot('question-1');
+          await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowRight', lifelines);
+          await shot('lifeline-' + lifelines); await tap('z'); lifelines++; await wait(400);
+          await advance(0); for (let k = 0; k < 6; k++) { await tap('z'); await wait(250); }
+          await tap('ArrowUp'); await tap('ArrowUp'); continue;
+        }
+        answered.add(st.idx);
+        const h = qs[st.idx];
+        // cursor home is option 0: reset with up/left, then go to his answer
+        await tap('ArrowUp'); await tap('ArrowLeft'); await tap('ArrowUp');
+        if (await page.evaluate(() => window.game.scene.getScene('quiz').optTexts[0].style.color !== '#f2c94c')) await tap('ArrowRight');
+        if (h >= 2) await tap('ArrowDown');
+        if (h % 2) await tap('ArrowRight');
+        if (st.idx === 3) await shot('answer-moon');
+        await tap('z'); await wait(500);
+      } else { await tap('z', 1, 60); await wait(300); }
+    }
+    await wait(1200); await shot('after-quiz'); await advance(20); await wait(600);
+    const s = await state(); console.log('ch2 flags:', s.flags.sig_nasser, s.flags.stairs_open, 'items:', s.items);
+    await shot('stairs-open');
+    // take the stairs up and back down
+    await teleport(4, 12, 'side'); await page.evaluate(() => { const w = window.game.scene.getScene('world'); w.party[w.order[0]].setFlipX(false); });
+    await hold('ArrowLeft', 900); await wait(1200); await shot('first-floor');
+    console.log('map after stairs:', (await state()).map);
+  },
+
   async battle() {
     await tap('Enter'); await wait(1200); await advance();
     await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('rls-save')); }); 

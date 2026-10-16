@@ -1,8 +1,7 @@
 import * as Phaser from 'phaser';
 import { FONT, FONT_AR } from '../config';
 
-const PEOPLE = ['mostafa', 'hussein', 'hefny', 'hassan', 'abdelfattah', 'habeba', 'auntie'];
-const PROPS = ['court', 'goalL', 'goalR', 'tree1', 'tree2', 'swings', 'car', 'soul', 'chalk', 'stickH', 'cloud', 'sparkle', 'sandwich', 'key', 'flag'];
+import { PEOPLE, PROPS } from '../data/assets.gen';
 
 export class BootScene extends Phaser.Scene {
   constructor() { super('boot'); }

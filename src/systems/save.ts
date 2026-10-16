@@ -1,24 +1,26 @@
 // Story state: flags + inventory + where the party stands. Persisted to localStorage (versioned).
-const KEY = 'rls-save', VERSION = 1;
+const KEY = 'rls-save', VERSION = 2;
 
 export type Who = 'mostafa' | 'hussein' | 'hefny';
 
 export interface State {
   version: number;
-  flags: Record<string, boolean | number>;
+  flags: Record<string, boolean | number | string>;
   items: string[];
   leader: Who;
-  x: number; y: number;
+  map: string;               // which floor (key of MAPS in data/map.ts)
+  x: number; y: number;      // leader's feet, in px
+  dir: 'up' | 'down' | 'left' | 'right';
 }
 
 export const state: State = fresh();
 
 function fresh(): State {
-  return { version: VERSION, flags: {}, items: [], leader: 'mostafa', x: 27.5 * 16, y: 17 * 16 };
+  return { version: VERSION, flags: {}, items: [], leader: 'mostafa', map: 'ground', x: 27.5 * 16, y: 17 * 16, dir: 'up' };
 }
 
 export const flag = (k: string) => !!state.flags[k];
-export const setFlag = (k: string, v: boolean | number = true) => { state.flags[k] = v; };
+export const setFlag = (k: string, v: boolean | number | string = true) => { state.flags[k] = v; };
 export const count = (k: string) => Number(state.flags[k] ?? 0);
 export const bump = (k: string) => { state.flags[k] = count(k) + 1; return count(k); };
 export const hasItem = (i: string) => state.items.includes(i);
@@ -37,8 +39,9 @@ export function load(): boolean {
   try {
     const raw = localStorage.getItem(KEY); if (!raw) return false;
     const s = JSON.parse(raw) as State;
-    if (s.version !== VERSION) return false; // future: migrate
-    Object.assign(state, s);
+    if (s.version === 1) Object.assign(s, { version: 2, map: 'ground', dir: 'up' }); // v1 had a single map
+    if (s.version !== VERSION) return false;
+    Object.assign(state, fresh(), s);
     return true;
   } catch { return false; }
 }

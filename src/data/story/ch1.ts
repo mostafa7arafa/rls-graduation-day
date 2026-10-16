@@ -1,32 +1,12 @@
-// THE SCREENPLAY. Every conversation, joke and quest beat in Chapter 1 lives here.
+// CHAPTER 1 — "The Gate". Mr Hassan has the key; Mr Abdelfattah knows his weak spot (the oud perfume).
 // Scripts are async functions: `await c.say(who, text)` shows a line, `await c.choose([...])` a menu.
 // Who's leading (TAB to swap) changes what people say — that's the core comedy mechanic.
-import { flag, setFlag, bump, count, hasItem, giveItem } from '../systems/save';
-import type { Who } from '../systems/save';
-import type { Reaction } from '../systems/sfx';
+import { flag, setFlag, bump, count, hasItem, giveItem } from '../../systems/save';
+import { by, chapter } from './types';
+import type { Script, Npc, Spot } from './types';
+import { LATER } from './recurring';
+import { start as chapter2Start } from './ch2';
 
-export interface Ctx {
-  leader: Who;
-  say(who: string, text: string): Promise<void>;
-  choose(options: string[], who?: string, prompt?: string): Promise<number>;
-  wait(ms: number): Promise<void>;
-  shake(intensity?: number, ms?: number): void;
-  emote(who: string, mark: '!' | '?' | '<3' | '...' | '#'): void;   // also plays that character's voice reaction
-  react(who: string, kind: Reaction): void;                          // voice reaction without a bubble (laugh, noo, ow...)
-  tint(who: string, color: number, ms: number): void;
-  battle(id: 'hassan'): Promise<boolean>;
-  toast(text: string): void;
-  bell(): void;
-  openGate(): void;
-  sting(): void;
-  finish(): Promise<void>;
-}
-type Script = (c: Ctx) => Promise<void>;
-
-/** pick a line based on who is leading */
-const by = <T>(c: Ctx, m: Record<Who, T>) => m[c.leader];
-
-// ─────────────────────────────────────────────── OBJECTIVE (HUD)
 export function objective(): string {
   if (flag('gate_open')) return 'Leave RLS. For real this time.';
   if (hasItem('key')) return 'Unlock the main gate (south).';
@@ -50,10 +30,9 @@ export const intro: Script = async (c) => {
 };
 
 // ─────────────────────────────────────────────── NPCs
-export interface Npc { id: string; x: number; y: number; dir: 'down' | 'up' | 'side'; flip?: boolean; script: Script }
-
 export const NPCS: Npc[] = [
   { id: 'hassan', x: 7, y: 2, dir: 'down', script: async (c) => {
+    if (chapter() > 1) return LATER.hassan(c);
     if (flag('hassan_beaten')) {
       return c.say('hassan', by(c, {
         mostafa: 'Go, engineer. Build something that does homework. Then build one that CHECKS it.',
@@ -92,6 +71,7 @@ export const NPCS: Npc[] = [
   } },
 
   { id: 'abdelfattah', x: 20, y: 11, dir: 'down', script: async (c) => {
+    if (chapter() > 1) return LATER.abdelfattah(c);
     if (!flag('met_abdel')) {
       setFlag('met_abdel');
       await c.say('abdelfattah', 'My boys! Graduation day! I am so proud I wrote a poem. Forty verses.');
@@ -126,7 +106,8 @@ export const NPCS: Npc[] = [
     await c.say('abdelfattah', lines[bump('abdel_talks') % lines.length]);
   } },
 
-  { id: 'habeba', x: 7, y: 30, dir: 'down', script: async (c) => {
+  { id: 'habeba', x: 7, y: 30, dir: 'down', when: () => !flag('finale_started'), script: async (c) => {
+    if (chapter() > 1) return LATER.habeba(c);
     if (c.leader === 'hussein') {
       c.emote('hussein', '<3');
       await c.say('hussein', 'H-Habeba! Hi! I— the weather— I play goalkeeper. With my hands. Haha. Hands.');
@@ -148,6 +129,7 @@ export const NPCS: Npc[] = [
   } },
 
   { id: 'auntie', x: 47, y: 3, dir: 'down', script: async (c) => {
+    if (chapter() > 1) return LATER.auntie(c);
     if (c.leader === 'hussein' && !flag('auntie_debt')) {
       setFlag('auntie_debt');
       c.emote('hussein', '!');
@@ -169,11 +151,10 @@ export const NPCS: Npc[] = [
 ];
 
 // ─────────────────────────────────────────────── INSPECTABLE SPOTS (tile rects)
-export interface Spot { x: number; y: number; w?: number; h?: number; script: Script }
-
 export const SPOTS: Spot[] = [
   // main gate
   { x: 26, y: 45, w: 4, script: async (c) => {
+    if (chapter() > 1) return LATER.gate(c);
     if (flag('gate_open')) return c.say('narrator', 'The gate is open. The street smells like freedom and ful.');
     if (hasItem('key')) {
       await c.say('narrator', 'You turn Mr Hassan\'s key in the padlock...');
@@ -246,6 +227,7 @@ export const SPOTS: Spot[] = [
 
 // ─────────────────────────────────────────────── ENDING (walk out the gate)
 export const ending: Script = async (c) => {
+  c.music(null);
   await c.say('narrator', 'The three of you step onto the street. Free. Actually free.');
   c.react('hussein', 'laugh');
   await c.say('hussein', 'Ful sandwich celebration? Mostafa is paying.');
@@ -257,6 +239,7 @@ export const ending: Script = async (c) => {
   c.emote('hussein', '!'); c.emote('hefny', '#'); c.emote('mostafa', '...');
   await c.wait(700); c.react('hussein', 'noo');
   await c.say('hussein', 'NOOOOOOOOOOOOO');
-  await c.say('narrator', 'RLS: GRADUATION DAY — Chapter 1 complete. To be continued...');
-  await c.finish();
+  setFlag('chapter', 2); setFlag('gate_open', false);
+  await c.chapter(2, 'The Quiz', () => c.teleport('ground', 27.5, 44, 'up'));
+  await chapter2Start(c);
 };

@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { CAST } from '../data/cast';
 import { sfx } from '../systems/sfx';
 import { W, H, FONT } from '../config';
-import { tr, txt, isAr } from '../systems/i18n';
+import { tr, txt, isAr, num } from '../systems/i18n';
 
 // Always-on-top overlay: dialogue box, choices, toasts, objective + leader HUD.
 // Scripts talk to it through say()/choose() which return Promises.
@@ -19,6 +19,9 @@ export class UIScene extends Phaser.Scene {
   private hudFace!: Phaser.GameObjects.Image;
   private hudName!: Phaser.GameObjects.Text;
   private objX = 32;
+  private form!: Phaser.GameObjects.Text;
+  private hint!: Phaser.GameObjects.Text;
+  private card?: Phaser.GameObjects.Container;
   private confirmCb: (() => void) | null = null;
   private navCb: ((d: number) => void) | null = null;
   busy = false;
@@ -48,7 +51,10 @@ export class UIScene extends Phaser.Scene {
     this.objX = ar ? W - 32 : 32;
     this.hudName = this.add.text(this.objX, ar ? -1 : 6, '', txt(8, { color: '#f4f0e8' })).setOrigin(ar ? 1 : 0, 0).setShadow(1, 1, '#1b1420', 0, false, true);
     this.objective = this.add.text(this.objX, ar ? 12 : 18, '', txt(8, { color: '#f2c94c', wordWrap: { width: W - 40 } })).setOrigin(ar ? 1 : 0, 0).setShadow(1, 1, '#1b1420', 0, false, true);
-    this.add.text(ar ? 4 : W - 4, ar ? 0 : 4, tr('TAB swap · Z talk · M mute'), txt(8, { color: '#cfc6b8' })).setOrigin(ar ? 0 : 1, 0).setAlpha(0.7).setShadow(1, 1, '#1b1420', 0, false, true);
+    this.hint = this.add.text(ar ? 4 : W - 4, ar ? 0 : 4, tr('TAB swap · Z talk · M mute'), txt(8, { color: '#cfc6b8' })).setOrigin(ar ? 0 : 1, 0).setAlpha(0.7).setShadow(1, 1, '#1b1420', 0, false, true);
+
+    // clearance form progress (appears once Sheikh Nasser hands it over)
+    this.form = this.add.text(ar ? 4 : W - 4, ar ? 0 : 4, '', txt(8, { color: '#9fe09a' })).setOrigin(ar ? 0 : 1, 0).setShadow(1, 1, '#1b1420', 0, false, true).setVisible(false);
 
     const kb = this.input.keyboard!;
     const confirm = () => { const cb = this.confirmCb; if (cb) cb(); };
@@ -137,6 +143,28 @@ export class UIScene extends Phaser.Scene {
       this.navCb = (d) => { sel = (sel + d + options.length) % options.length; sfx.move(); render(); };
       this.confirmCb = () => { this.navCb = null; this.confirmCb = null; sfx.select(); resolve(sel); };
     });
+  }
+
+  setForm(n: number) {
+    // the controls hint gives way to the form counter (by then everyone knows the controls)
+    this.form.setVisible(n >= 0); this.hint.setVisible(n < 0);
+    if (n >= 0) this.form.setText(`${tr('FORM')} ${num(n)}/${num(6)}`);
+  }
+
+  /** black full-screen chapter title; resolves once it is fully shown (hide with chapterCardHide) */
+  chapterCard(n: number, title: string): Promise<void> {
+    this.close();
+    const bg = this.add.rectangle(0, 0, W, H, 0x1b1420).setOrigin(0);
+    const k = this.add.text(W / 2, H / 2 - 16, `${tr('CHAPTER')} ${num(n)}`, txt(8, { color: '#f2c94c' })).setOrigin(0.5);
+    const t = this.add.text(W / 2, H / 2 + 6, tr(title), txt(16, { color: '#f4f0e8' })).setOrigin(0.5);
+    this.card = this.add.container(0, 0, [bg, k, t]).setDepth(100).setAlpha(0);
+    sfx.item();
+    return new Promise(r => this.tweens.add({ targets: this.card, alpha: 1, duration: 500, onComplete: () => this.time.delayedCall(2000, () => r()) }));
+  }
+  chapterCardHide(): Promise<void> {
+    const card = this.card; this.card = undefined;
+    if (!card) return Promise.resolve();
+    return new Promise(r => this.tweens.add({ targets: card, alpha: 0, duration: 600, onComplete: () => { card.destroy(); r(); } }));
   }
 
   toast(text: string, color = '#f2c94c') {

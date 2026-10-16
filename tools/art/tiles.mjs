@@ -98,6 +98,39 @@ function doorway() { const g = terrazzo('#bfb8ab', 61); g.rect(0, 0, 16, 3, '#7a
 function tabletop() { const g = terrazzo('#c4bfb4', 71); g.rect(1, 3, 14, 9, '#8a5a36'); g.hline(1, 14, 3, '#a87b4f'); g.rect(3, 5, 4, 3, '#f4f0e8'); g.rect(9, 5, 3, 4, '#1b1420'); g.set(10, 6, '#4f8f7a'); return g; }
 function rug() { const g = T(); g.rect(0, 0, 16, 16, '#9c3b3b'); g.rect(1, 1, 14, 14, '#b54848'); g.rect(4, 4, 8, 8, '#d8b25a'); g.rect(6, 6, 4, 4, '#9c3b3b'); return g; }
 
+function stairs() { // terrazzo steps going up the stairwell, lit from the top
+  const g = T(); g.rect(0, 0, 16, 16, '#b5ada0');
+  for (let y = 0; y < 16; y += 4) { g.rect(0, y, 16, 3, y < 8 ? '#cfc8bc' : '#c2baad'); g.hline(0, 15, y + 3, '#8f887c'); g.hline(0, 15, y, '#e0dace'); }
+  g.vline(0, 0, 15, '#6b4426'); g.vline(15, 0, 15, '#6b4426');
+  return g;
+}
+function mat() { // green prayer mats with a little mihrab arch
+  const g = pavers(91); g.rect(1, 0, 14, 16, '#2f7a4a'); g.rect(2, 1, 12, 14, '#3e9a5c');
+  g.hline(5, 10, 3, '#d8b25a'); g.set(4, 4, '#d8b25a'); g.set(11, 4, '#d8b25a'); g.vline(4, 5, 12, '#d8b25a'); g.vline(11, 5, 12, '#d8b25a');
+  g.hline(1, 14, 15, '#d8b25a');
+  return g;
+}
+function labBench() { // black lab bench with flasks and a gas tap
+  const g = terrazzo('#c4bfb4', 81); g.rect(0, 2, 16, 11, '#2a2a33'); g.hline(0, 15, 2, '#44444f'); g.rect(0, 13, 16, 2, '#1b1b22');
+  g.rect(3, 4, 3, 4, '#9fd0f0'); g.rect(3, 6, 3, 2, '#c23b3b'); g.set(4, 3, '#d8dde3');
+  g.rect(9, 5, 4, 3, '#d8dde3'); g.rect(10, 6, 2, 1, '#7fe08a'); g.set(13, 10, '#f2c94c');
+  return g;
+}
+function labShelf() { // wall shelf of suspicious coloured bottles
+  const g = wallFace(); g.rect(1, 0, 14, 12, '#7a5232');
+  const cols = ['#c23b3b', '#2f6fc2', '#7fe08a', '#f2c94c', '#b05ad8', '#e8742a'];
+  for (const y of [1, 6]) for (let x = 2; x < 14; x += 3) { const c = cols[(x + y) % cols.length]; g.rect(x, y + 1, 2, 3, c); g.set(x, y, '#d8dde3'); }
+  return g;
+}
+function mapPoster() { // world map for Mr Ibrahim's social studies room
+  const g = wallFace(); g.rect(1, 1, 14, 9, '#5aa0d8'); g.hline(1, 14, 1, '#a87b4f'); g.hline(1, 14, 9, '#a87b4f');
+  [[3, 3, 3, 2], [7, 3, 2, 4], [10, 4, 3, 3], [4, 6, 2, 2]].forEach(([x, y, w, h]) => g.rect(x, y, w, h, '#6fb456'));
+  g.set(9, 5, '#c23b3b'); // Rashid. The centre of the world.
+  return g;
+}
+function sink() { const g = terrazzo('#c4bfb4', 83); g.rect(2, 2, 12, 10, '#d8dde3'); g.rect(4, 4, 8, 6, '#9aa2ab'); g.rect(7, 1, 2, 3, '#7a7f8a'); g.rect(0, 12, 16, 2, '#9aa2ab'); return g; }
+function sofa() { const g = terrazzo('#c4bfb4', 85); g.rect(0, 2, 16, 12, '#7a2e4f'); g.rect(0, 2, 16, 4, '#9c4468'); g.rect(1, 7, 6, 5, '#8a3a5c'); g.rect(9, 7, 6, 5, '#8a3a5c'); return g; }
+
 export const TILES = [
   ['void', () => { const g = T(); g.rect(0, 0, 16, 16, '#1b1420'); return g; }],
   ['grass', () => grass(1)], ['grass2', () => grass(2)], ['flowers', () => grass(3, 'flowers')],
@@ -112,6 +145,8 @@ export const TILES = [
   ['doorShut', () => wallFace('doorShut')], ['outWall', () => wallFace('plain', true)], ['outWin', () => wallFace('window', true)],
   ['turf', () => turf(false)], ['turf2', () => turf(true)], ['bench', bench], ['curb', curb], ['cabinet', cabinet],
   ['tabletop', tabletop], ['rug', rug],
+  // v1.0 — floors & chapters 2+
+  ['stairs', stairs], ['mat', mat], ['labBench', labBench], ['labShelf', labShelf], ['mapPoster', mapPoster], ['sink', sink], ['sofa', sofa],
 ];
 
 export function tileset() {

@@ -37,7 +37,7 @@ export class TitleScene extends Phaser.Scene {
       this.add.text(W / 2, 140, tr('Chapter 1 complete! Sheikh Nasser\'s QUIZ is coming...'), txt(8, { color: '#9fe09a' })).setOrigin(0.5);
     }
 
-    const canContinue = hasSave() && load() && flag('intro_done') && !flag('chapter1_done');
+    const canContinue = hasSave() && load() && flag('intro_done') && !flag('game_done');
     this.options = [...(canContinue ? ['CONTINUE'] : []), 'NEW GAME', 'LANGUAGE'];
     this.optTexts = this.options.map((_, i) => this.add.text(W / 2, 160 + i * 16, '', txt(8, { color: '#f4f0e8' })).setOrigin(0.5));
     this.sel = data?.sel ?? 0; this.render();

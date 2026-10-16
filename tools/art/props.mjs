@@ -89,3 +89,11 @@ export function flag() { // morning assembly (taboor) flagpole
   g.rect(14, 10, 3, 3, '#c09a3a'); g.set(15, 9, '#c09a3a');
   return g.outline(OUT);
 }
+
+export function chain() { // the stairwell, chained shut "since Hussein's 2016 incident"
+  const g = new Grid(32, 40);
+  for (const x of [1, 29]) { g.rect(x, 0, 2, 40, '#7a7f8a'); g.vline(x + 1, 0, 39, '#5a5f6a'); }
+  for (const y0 of [12, 26]) for (let x = 3; x < 29; x += 3) { g.rect(x, y0 + ((x / 3) % 2), 3, 2, '#9aa2ab'); g.set(x + 1, y0 + ((x / 3) % 2), '#d8dde3'); }
+  g.rect(12, 14, 8, 10, '#f4f0e8'); g.rect(13, 15, 6, 8, '#c23b3b'); g.hline(14, 17, 18, '#f4f0e8'); // NO ENTRY sign
+  return g.outline(OUT);
+}

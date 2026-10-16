@@ -2,7 +2,7 @@
 // Egyptian Arabic (Masri) lives in src/data/ar.ts as English -> Arabic, looked up at display time.
 // Missing translations fall back to English and warn once in the console (playtests catch these).
 import type * as Phaser from 'phaser';
-import { AR } from '../data/ar';
+import { AR } from '../data/ar/index';
 import { FONT, FONT_AR } from '../config';
 
 export type Lang = 'en' | 'ar';
@@ -31,3 +31,6 @@ export function txt(size: 8 | 16 = 8, extra: Phaser.Types.GameObjects.Text.TextS
     ? { fontFamily: FONT_AR, fontSize: size === 8 ? '12px' : '22px', rtl: true, testString: '|MÉqgyأإجيـع', ...extra }
     : { fontFamily: FONT, fontSize: `${size}px`, ...extra };
 }
+
+/** a number in the current language's digits (Arabic uses ٠١٢٣٤٥٦٧٨٩) */
+export const num = (n: number) => lang === 'ar' ? String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[+d]) : String(n);
