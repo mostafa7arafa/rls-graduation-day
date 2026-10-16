@@ -3,6 +3,7 @@ import { CAST } from '../data/cast';
 import { sfx } from '../systems/sfx';
 import { W, H, FONT } from '../config';
 import { tr, txt, isAr, num } from '../systems/i18n';
+import { padStyle } from '../systems/gamepad';
 
 // Always-on-top overlay: dialogue box, choices, toasts, objective + leader HUD.
 // Scripts talk to it through say()/choose() which return Promises.
@@ -52,10 +53,12 @@ export class UIScene extends Phaser.Scene {
     this.objX = ar ? W - 32 : 32;
     this.hudName = this.add.text(this.objX, ar ? -1 : 6, '', txt(8, { color: '#f4f0e8' })).setOrigin(ar ? 1 : 0, 0).setShadow(1, 1, '#1b1420', 0, false, true);
     this.objective = this.add.text(this.objX, ar ? 12 : 18, '', txt(8, { color: '#f2c94c', wordWrap: { width: W - 40 } })).setOrigin(ar ? 1 : 0, 0).setShadow(1, 1, '#1b1420', 0, false, true);
-    this.hint = this.add.text(ar ? 4 : W - 4, ar ? 0 : 4, tr('TAB swap · Z talk · M mute'), txt(8, { color: '#cfc6b8' })).setOrigin(ar ? 0 : 1, 0).setAlpha(0.7).setShadow(1, 1, '#1b1420', 0, false, true);
+    this.hint = this.add.text(ar ? 4 : W - 4, ar ? 0 : 4, '', txt(8, { color: '#cfc6b8' })).setOrigin(ar ? 0 : 1, 0).setAlpha(0.7).setShadow(1, 1, '#1b1420', 0, false, true);
 
     // clearance form progress (appears once Sheikh Nasser hands it over)
     this.form = this.add.text(ar ? 4 : W - 4, ar ? 0 : 4, '', txt(8, { color: '#9fe09a' })).setOrigin(ar ? 0 : 1, 0).setShadow(1, 1, '#1b1420', 0, false, true).setVisible(false);
+
+    this.refreshHint();
 
     const kb = this.input.keyboard!;
     const confirm = () => { const cb = this.confirmCb; if (cb) cb(); };
@@ -148,6 +151,13 @@ export class UIScene extends Phaser.Scene {
 
   /** put the dialogue box at the top of the screen (for cutscenes happening at the bottom of the map) */
   setBoxTop(top: boolean) { this.boxY = top ? -(H - 78 - 44) : 0; this.box.setY(this.boxY); }
+
+  /** controls hint for keyboard, Xbox or PlayStation (called again when a controller connects) */
+  refreshHint(announce = false) {
+    const style = padStyle();
+    this.hint.setText(tr(style === 'playstation' ? 'R1 swap · CROSS talk · SQUARE run' : style === 'xbox' ? 'RB swap · A talk · X run' : 'TAB swap · Z talk · M mute'));
+    if (announce) this.toast(style ? 'Controller connected!' : 'Controller disconnected');
+  }
 
   setForm(n: number) {
     // the controls hint gives way to the form counter (by then everyone knows the controls)

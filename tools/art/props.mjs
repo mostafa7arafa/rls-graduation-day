@@ -122,17 +122,17 @@ export function beaker() {
 }
 export function beakerLiquid() { const g = new Grid(28, 32); g.rect(4, 12, 20, 16, '#ffffff'); g.hline(4, 23, 12, '#e8e8e8'); return g; }
 
-// Hussein's family tractor (faces left). The payoff of the whole game.
+// Hussein's family tractor (faces left): red, no roof. The payoff of the whole game.
 export function tractor() {
   const g = new Grid(60, 44);
   drawTractor(g, 0);
   return g.outline(OUT);
 }
 function drawTractor(g, oy) {
-  const G = '#3e9a4f', GS = '#2c7039', GH = '#5fc06a', R = '#c8323a';
+  const G = '#c8323a', GS = '#9c262c', GH = '#e85a5a', R = '#2a2026'; // red body, dark mudguard
   g.rect(8, 16 + oy, 30, 12, G); g.hline(8, 37, 16 + oy, GH); g.hline(8, 37, 27 + oy, GS);   // hood
   g.rect(36, 8 + oy, 16, 20, G); g.hline(36, 51, 8 + oy, GH);                                 // cab body
-  g.rect(38, 0 + oy, 2, 10, '#3a3436'); g.rect(50, 0 + oy, 2, 10, '#3a3436'); g.rect(36, 0 + oy, 18, 2, R); // roof frame
+  g.rect(40, 4 + oy, 8, 5, '#3a3436'); g.hline(40, 47, 4 + oy, '#5a5f6a');                    // open seat (no roof)
   g.rect(14, 8 + oy, 3, 9, '#3a3436'); g.rect(13, 6 + oy, 5, 2, '#5a5f6a');                   // exhaust
   g.rect(5, 18 + oy, 4, 6, '#d8dde3'); g.set(6, 19 + oy, '#f2c94c');                           // grille + light
   // big rear wheel, small front wheel

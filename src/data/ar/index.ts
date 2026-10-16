@@ -6,5 +6,6 @@ import { CH4 } from './ch4';
 import { CH5 } from './ch5';
 import { CH6 } from './ch6';
 import { CH7 } from './ch7';
+import { V2 } from './v2';
 
-export const AR: Record<string, string> = { ...CH1, ...CH2, ...CH3, ...CH4, ...CH5, ...CH6, ...CH7 };
+export const AR: Record<string, string> = { ...CH1, ...CH2, ...CH3, ...CH4, ...CH5, ...CH6, ...CH7, ...V2 };

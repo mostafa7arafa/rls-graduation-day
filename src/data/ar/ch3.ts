@@ -6,16 +6,10 @@ export const CH3: Record<string, string> = {
 
   // ── arriving upstairs / Mr Ibrahim
   "The first floor. It smells like whiteboard markers and fear.": "الدور الأول. ريحته أقلام سبورة وخوف.",
-  "Ah! The famous three! Welcome, welcome to the first floor.": "آه! التلاتة المشاهير! أهلاً أهلاً في الدور الأول.",
-  "I am Mr Ibrahim, social studies. I never taught you, but I heard EVERYTHING about you.": "أنا أستاذ إبراهيم، دراسات. عمري ما درّستلكوا، بس سمعت عنكوا كل حاجة.",
-  "Everything good, I hope.": "كل حاجة حلوة، إن شاء الله.",
-  "...I heard everything, habibi.": "...سمعت كل حاجة يا حبيبي.",
   "Mr Yasser is in the English room, the first door. Be brave. Spell carefully.": "مستر ياسر في فصل الإنجليزي، أول باب. خليكوا شجعان. واتهجّوا بالراحة.",
   "Mr Yasser has been standing at that board since seven in the morning. With his red pen. Waiting.": "مستر ياسر واقف قدام السبورة دي من سابعة الصبح. بالقلم الأحمر. مستني.",
   "Social studies fact: Rashid is the centre of the world. I marked it on the map. Go and check.": "معلومة دراسات: رشيد هي مركز العالم. أنا معلّمها على الخريطة. روحوا شوفوا.",
   "The teachers' lounge is at the end, on the left. Do not go in. Nobody comes out the same.": "أوضة المدرسين في الآخر على الشمال. ماتدخلوش. محدش بيطلع منها زي ما دخل.",
-  "Mostafa, my son, when your computers rule the world, tell them I was kind to you.": "يا مصطفى يا ابني، لما الكمبيوترات بتاعتك تحكم العالم، قولهم إني كنت طيب معاك.",
-  "Hussein! Twelve years and you never broke anything on my floor. ...Because you never came up here.": "حسين! اتناشر سنة وعمرك ما كسرت حاجة في دوري. ...عشان عمرك ما طلعت هنا.",
   "Hefny, the lab is that way. I can see in your eyes that you want to go to the lab.": "حفني، المعمل من هنا. شايف في عينك إنك عايز تروح المعمل.",
 
   // ── Mr Yasser

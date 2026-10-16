@@ -31,6 +31,8 @@ export const start: Script = async (c) => {
   await c.say('habeba', 'Good luck... everyone!');
   c.emote('hussein', '<3');
   await c.say('hefny', 'Twelve years. I have waited TWELVE YEARS for this.');
+  await c.say('hussein', 'Hefny. Whatever happens. Don\'t punch Karim.');
+  await c.say('hefny', 'I make no promises. I make penalties.');
 };
 
 export const NPCS: Npc[] = [
@@ -119,7 +121,7 @@ export const finale: Script = async (c) => {
   setFlag('tractor_here'); c.sync();
   c.sound('engine');
   await c.moveProp('tractor', -26 * T, 0, 3200);
-  await c.say('narrator', 'A green tractor rumbles down the street of Rashid. Children cheer. A goat follows it.');
+  await c.say('narrator', 'A red tractor rumbles down the street of Rashid. Children cheer. A goat follows it.');
   await c.say('hussein', 'Thanks, Baba!');
   await c.say('narrator', 'A rope. A tug. Karim\'s car rolls out of RLS for the first time in three years.');
   c.sound('engine');

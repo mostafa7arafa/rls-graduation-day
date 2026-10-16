@@ -9,6 +9,7 @@ import * as ch4 from './ch4';
 import * as ch5 from './ch5';
 import * as ch6 from './ch6';
 import * as ch7 from './ch7';
+import * as extras from './extras';
 
 export * from './types';
 export { FORM, signed } from './recurring';
@@ -16,7 +17,7 @@ export const intro = ch1.intro;
 
 const CHAPTERS = [ch1, ch2, ch3, ch4, ch5, ch6, ch7];
 
-export const NPCS: Npc[] = CHAPTERS.flatMap(ch => ch.NPCS);
+export const NPCS: Npc[] = [...CHAPTERS.flatMap(ch => ch.NPCS), ...extras.NPCS];
 export const SPOTS: Spot[] = CHAPTERS.flatMap(ch => ch.SPOTS);
 
 export function objective(): string {

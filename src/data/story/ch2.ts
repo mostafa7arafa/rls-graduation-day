@@ -56,6 +56,11 @@ export const NPCS: Npc[] = [
       await c.say('hussein', 'It was ONE banister. And it was already loose.');
       await c.say('nasser', 'Go upstairs. Mr Yasser is waiting. He said to tell Hussein: "spell your name."');
       await c.say('hussein', '...H... U... S... why is he like this.');
+      await c.say('hussein', 'Sheikh, one last thing. Spiders. It\'s eight legs, right? Between us?');
+      await c.say('nasser', 'Six.');
+      await c.say('hussein', 'Six. Got it. Six.');
+      c.emote('hefny', '#');
+      await c.say('hefny', 'I am going to need therapy after this quiz. Medical school can wait.');
       c.sync();
       c.toast('The stairs are open (west end of the corridor)');
     } else {

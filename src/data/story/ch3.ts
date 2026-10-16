@@ -20,10 +20,12 @@ export const enterFirst: Script = async (c) => {
   await c.chapter(3, 'Spelling Rain');
   await c.say('narrator', 'The first floor. It smells like whiteboard markers and fear.');
   c.emote('ibrahim', '!');
-  await c.say('ibrahim', 'Ah! The famous three! Welcome, welcome to the first floor.');
-  await c.say('ibrahim', 'I am Mr Ibrahim, social studies. I never taught you, but I heard EVERYTHING about you.');
-  await c.say('hussein', 'Everything good, I hope.');
-  await c.say('ibrahim', '...I heard everything, habibi.');
+  await c.say('ibrahim', 'My old students! Mostafa. Hefny. And... Hussein. Welcome, welcome to the first floor.');
+  await c.say('ibrahim', 'Two years I taught you social studies. I still keep your essays. I read them when I need to laugh.');
+  await c.say('hussein', 'You KEPT them?');
+  await c.say('ibrahim', 'Hussein\'s essay on Egypt: "Egypt is a country. It is hot. The end." I framed it.');
+  await c.say('hefny', 'Mine was twelve pages.');
+  await c.say('ibrahim', 'Yours was thirteen, Hefny. You wrote a page apologising that it was only twelve.');
   await c.say('ibrahim', 'Mr Yasser is in the English room, the first door. Be brave. Spell carefully.');
 };
 
@@ -38,8 +40,8 @@ export const NPCS: Npc[] = [
       ]));
     }
     await c.say('ibrahim', by(c, {
-      mostafa: 'Mostafa, my son, when your computers rule the world, tell them I was kind to you.',
-      hussein: 'Hussein! Twelve years and you never broke anything on my floor. ...Because you never came up here.',
+      mostafa: 'Mostafa, my son. You fixed my projector in my class every single week. When your computers rule the world, tell them I was kind to you.',
+      hussein: 'Hussein! Two years by my window. You know more about the courtyard pigeons than about the Nile.',
       hefny: 'Hefny, the lab is that way. I can see in your eyes that you want to go to the lab.',
     }));
   } },
@@ -70,6 +72,8 @@ export const NPCS: Npc[] = [
         await c.say('yasser', 'Doctor Hefny. Spell "stethoscope". ...Exactly.');
       }
       await c.say('yasser', 'Hussein. You are a goalkeeper, yes? Then CATCH.');
+      await c.say('hefny', 'Hussein. Breathe. B-R-E-A-T-H-E.');
+      await c.say('hussein', 'DON\'T SPELL AT ME.');
     } else {
       await c.say('yasser', 'Back for more red ink? Gloves on, Hussein.');
     }

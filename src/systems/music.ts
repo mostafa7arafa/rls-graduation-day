@@ -120,7 +120,7 @@ const TRACKS = {
   },
   // Mr Amr's gym: a steady Saidi beat — the rhythm game keys off this tempo (RHYTHM_BPM)
   rhythm: {
-    bpm: 120, drumVol: 1.2,
+    bpm: 100, drumVol: 1.2,
     voices: [
       { wave: 'square', vol: 0.026, notes: `
         G4 . G4 Ab4 B4 . C5 . | D5 . C5 B4 Ab4 . G4 . | G4 . G4 Ab4 B4 . C5 D5 | Eb5 D5 C5 B4 C5 . . . |` },

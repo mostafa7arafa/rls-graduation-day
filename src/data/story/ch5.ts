@@ -123,6 +123,9 @@ export const NPCS: Npc[] = [
       await c.say('abdelkareem', 'Bring me sandwiches. At least four. Then we negotiate.');
       await c.say('hefny', 'Where are we supposed to find sandwiches?!');
       await c.say('mostafa', 'Everyone in this school owes us something. Let\'s collect.');
+      c.tint('hefny', 0xff5050, 1200);
+      await c.say('hefny', 'Hussein. Hold me back. If he says the word "fraction" I will lose control.');
+      await c.say('hussein', 'I\'m not holding you back. I\'m hiding behind you.');
       c.toast('Collect ful sandwiches from people around the school');
       return;
     }

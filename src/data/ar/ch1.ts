@@ -12,6 +12,10 @@ export const CH1: Record<string, string> = {
 
   // ── HUD / title / toasts
   "TAB swap · Z talk · M mute": "TAB تبديل · Z كلام · M صوت",
+  "RB swap · A talk · X run": "RB تبديل · A كلام · X جري",
+  "R1 swap · CROSS talk · SQUARE run": "R1 تبديل · ✕ كلام · ▢ جري",
+  "Controller connected!": "الدراع اتوصّل!",
+  "Controller disconnected": "الدراع اتفصل",
   "Sound OFF": "الصوت مقفول",
   "Sound ON": "الصوت شغال",
   "GRADUATION DAY": "يوم التخرج",

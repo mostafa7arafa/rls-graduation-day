@@ -60,7 +60,7 @@ export const CH7: Record<string, string> = {
   "...Leave this to me.": "...سيبوهالي.",
   "Hussein takes out his phone.": "حسين طلّع موبايله.",
   "Baba? ...Yes. Bring the tractor. ...Yes, THE tractor. ...Yes. It is an important day.": "بابا؟ ...أيوه. هات الجرّار. ...أيوه، الجرّار. ...أيوه. النهارده يوم مهم.",
-  "A green tractor rumbles down the street of Rashid. Children cheer. A goat follows it.": "جرّار أخضر نازل شارع رشيد بيزمجر. العيال بتهلل. ومعزة ماشية وراه.",
+  "A red tractor rumbles down the street of Rashid. Children cheer. A goat follows it.": "جرّار أحمر نازل شارع رشيد بيزمجر. العيال بتهلل. ومعزة ماشية وراه.",
   "Thanks, Baba!": "شكراً يا بابا!",
   "A rope. A tug. Karim's car rolls out of RLS for the first time in three years.": "حبل. شدّة. وعربية كريم خرجت من المدرسة لأول مرة من تلات سنين.",
   "MY CAR! ...Actually, thank you. I didn't know how to get it out.": "عربيتي! ...بصراحة، شكراً. ماكنتش عارف أطلّعها إزاي.",

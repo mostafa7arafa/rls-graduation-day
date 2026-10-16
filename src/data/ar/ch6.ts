@@ -20,7 +20,6 @@ export const CH6: Record<string, string> = {
   "Mr Amr, I sit at a desk for a living. My body is mostly coffee.": "يا كابتن عمرو، أنا شغلانتي إني قاعد على مكتب. جسمي أغلبه قهوة.",
   "I'm a goalkeeper, Mr Amr. I don't do push-ups. I do DIVES.": "أنا حارس مرمى يا كابتن. مابعملش ضغط. أنا بنط.",
   "Doctors don't need push-ups. We need... clean hands.": "الدكاترة مش محتاجين ضغط. إحنا محتاجين... إيدين نضيفة.",
-  "Then DIVE to the floor and PUSH. Arrows on the beat! When the arrow hits the line! GO!": "يبقى نط على الأرض واضغط. الأسهم على الإيقاع! لما السهم يلمس الخط! يلا!",
   "BACK FOR MORE! Good! Pain is just weakness leaving the body!": "راجعين عايزين تاني! حلو! الوجع ده الضعف وهو خارج من الجسم!",
   "It's leaving through my back, Mr Amr.": "خارج من ضهري يا كابتن.",
   "Rest. Drink water. Not the cooler water, it is warm. Then come back.": "ارتاحوا. اشربوا مية. مش مية الكولدير، دي سخنة. وبعدين ارجعوا.",

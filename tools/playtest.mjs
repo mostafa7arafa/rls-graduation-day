@@ -38,6 +38,12 @@ const teleport = (tx, ty, dir = 'up') => page.evaluate(([x, y, d]) => {
 }, [tx, ty, dir]);
 const state = () => page.evaluate(() => JSON.parse(localStorage.getItem('rls-save') || '{}'));
 
+// a fake controller for the 'pad' scenario: window.__pad.buttons[i] / axes are set from the test
+if (scenario === 'pad') await page.addInitScript(() => {
+  window.__pad = { id: 'Xbox Wireless Controller (STANDARD GAMEPAD)', index: 0, connected: true, mapping: 'standard', axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) };
+  navigator.getGamepads = () => [window.__pad];
+});
 await page.goto(url);
 await page.evaluate((l) => { localStorage.clear(); localStorage.setItem('rls-lang', l); }, lang);
 await page.reload();
@@ -73,7 +79,27 @@ const playEncounter = async (key, step, max = 900) => {
 };
 const talkUntilBattle = async (key) => { for (let i = 0; i < 40 && !(await sceneActive(key)); i++) { await tap('z', 1, 60); await wait(350); } await wait(900); };
 
+const pad = async (i, ms = 120) => { // tap a controller button
+  await page.evaluate((i) => { window.__pad.buttons[i].pressed = true; }, i); await wait(ms);
+  await page.evaluate((i) => { window.__pad.buttons[i].pressed = false; }, i); await wait(120);
+};
+const stick = async (x, y, ms) => { await page.evaluate(([x, y]) => { window.__pad.axes[0] = x; window.__pad.axes[1] = y; }, [x, y]); await wait(ms); await page.evaluate(() => { window.__pad.axes[0] = 0; window.__pad.axes[1] = 0; }); await wait(150); };
+
 const scenarios = {
+  async pad() {
+    await pad(0); await wait(1500);                        // A starts a new game from the title
+    for (let i = 0; i < 40 && await page.evaluate(() => window.game.scene.getScene('ui')?.busy); i++) await pad(0, 80);  // A advances the intro
+    await wait(600); await shot('pad-world');
+    const before = await page.evaluate(() => { const w = window.game.scene.getScene('world'); return w.party[w.order[0]].y; });
+    await stick(0, 1, 900);                                // left stick down walks
+    const after = await page.evaluate(() => { const w = window.game.scene.getScene('world'); return w.party[w.order[0]].y; });
+    await pad(5);                                          // RB swaps leader
+    const leader = await page.evaluate(() => window.game.scene.getScene('world').order[0]);
+    await shot('pad-swap');
+    const hint = await page.evaluate(() => window.game.scene.getScene('ui').hint.text);
+    console.log('pad: walked', Math.round(after - before), 'px · leader after RB:', leader, '· hint:', hint);
+  },
+
   async ch3() {
     await fromSave(save({ ...CH2_DONE, chapter: 2 }, ['key', 'form'], 'ground', 4, 12, 'left'));
     await hold('ArrowLeft', 700); await wait(2500); await shot('ch3-card');

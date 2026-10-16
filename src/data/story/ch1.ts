@@ -52,6 +52,8 @@ export const NPCS: Npc[] = [
       c.emote('hassan', '#'); c.shake(0.006, 300);
       await c.say('hassan', 'YOU DON\'T EVEN HAVE A DOG!');
       await c.say('hassan', 'If you want the key... you must SURVIVE. MY. CLASS.');
+      await c.say('hefny', '(whispering) Hussein. If we don\'t make it... I did your homework in 2015. All of it. I\'m sorry.');
+      await c.say('hussein', '(whispering) I knew. Why do you think I passed?');
     }
     const won = await c.battle('hassan');
     if (won) {
@@ -62,6 +64,8 @@ export const NPCS: Npc[] = [
       c.emote('hussein', '<3');
       await c.say('hussein', 'Mr Hassan...!');
       await c.say('hassan', 'Now GET OUT of my classroom.');
+      await c.say('hefny', 'His favourite disaster. He never called ME anything.');
+      await c.say('hussein', 'You were his favourite FUTURE. That\'s worse. That\'s pressure.');
       giveItem('key'); c.toast('Got: MAIN GATE KEY');
     } else {
       bump('hassan_lost');
@@ -82,6 +86,9 @@ export const NPCS: Npc[] = [
         await c.say('hussein', 'Why is it about me.');
         c.react('abdelfattah', 'laugh');
         await c.say('abdelfattah', 'Verses two through forty are also about you, habibi.');
+        await c.say('hefny', 'Is there a verse about me?');
+        await c.say('abdelfattah', 'Verse thirty-one. It is about Hussein copying from you.');
+        await c.say('hussein', 'That is still a verse about me.');
       }
     }
     if (!flag('gate_seen')) {
@@ -239,6 +246,8 @@ export const ending: Script = async (c) => {
   c.emote('hussein', '!'); c.emote('hefny', '#'); c.emote('mostafa', '...');
   await c.wait(700); c.react('hussein', 'noo');
   await c.say('hussein', 'NOOOOOOOOOOOOO');
+  c.tint('hefny', 0xff5050, 1200);
+  await c.say('hefny', 'A quiz. On graduation day. I am going to become a doctor JUST to diagnose him.');
   setFlag('chapter', 2); setFlag('gate_open', false);
   await c.chapter(2, 'The Quiz', () => c.teleport('ground', 27.5, 44, 'up'));
   await chapter2Start(c);

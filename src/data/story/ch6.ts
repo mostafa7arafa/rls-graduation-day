@@ -46,7 +46,10 @@ export const NPCS: Npc[] = [
         hussein: 'I\'m a goalkeeper, Mr Amr. I don\'t do push-ups. I do DIVES.',
         hefny: 'Doctors don\'t need push-ups. We need... clean hands.',
       }));
-      await c.say('amr', 'Then DIVE to the floor and PUSH. Arrows on the beat! When the arrow hits the line! GO!');
+      await c.say('hussein', 'Mr Amr, I\'m injured. Permanently. Since 2009.');
+      await c.say('amr', 'Then you are WARMED UP. Arrows on the beat! When the arrow hits the line! GO!');
+      await c.say('hefny', '(to Hussein) If I die doing push-ups, tell the medical school I was brave.');
+      await c.say('hussein', 'I\'ll tell them you were Hefny. They\'ll understand.');
     } else {
       await c.say('amr', 'BACK FOR MORE! Good! Pain is just weakness leaving the body!');
       if (c.leader === 'hussein') await c.say('hussein', 'It\'s leaving through my back, Mr Amr.');

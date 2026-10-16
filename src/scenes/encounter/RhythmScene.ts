@@ -11,8 +11,8 @@ import type { Key } from './Encounter';
 // Arrows scroll left toward the line; press that arrow as it crosses. Misses cost dignity (and muscles).
 // Pass with 60% of the moves hit.
 
-const BPM = 120, BEAT = 60000 / BPM;      // must match the 'rhythm' track in music.ts
-const TRAVEL = 2 * BEAT;                  // an arrow is on screen for two beats
+const BPM = 100, BEAT = 60000 / BPM;      // must match the 'rhythm' track in music.ts
+const TRAVEL = 2.5 * BEAT;                // an arrow is on screen for two and a half beats
 const HIT_X = 110, SPAWN_X = 446;
 const LANES: Key[] = ['left', 'down', 'up', 'right'];
 const LANE_Y = [100, 118, 136, 154];
@@ -26,8 +26,9 @@ const SETS: { name: string; intro: string; moves: [number, Key][] }[] = [
   { name: 'SET 2: JUMPING JACKS', intro: 'Mr Amr: "SET TWO! JUMPING JACKS! LEFT, RIGHT! Hussein, the OTHER left!"',
     moves: Array.from({ length: 16 }, (_, i) => i).filter(i => i % 4 !== 3).map(i => [i, i % 2 ? 'right' : 'left'] as [number, Key]) },
   { name: 'SET 3: BURPEES', intro: 'Mr Amr: "SET THREE! BURPEES! Everything! All at once! This is what the army does!"',
-    moves: ([[0, 'down'], [1, 'up'], [2, 'left'], [2.5, 'right'], [3, 'up'], [4, 'down'], [5, 'down'], [5.5, 'up'], [6, 'left'], [7, 'right'],
-      [8, 'up'], [8.5, 'down'], [9, 'up'], [10, 'left'], [10.5, 'left'], [11, 'right'], [12, 'down'], [13, 'up'], [13.5, 'down'], [14, 'up'], [15, 'right']] as [number, Key][]) },
+    // burpees: everything, but only two off-beats, and a breather every bar
+    moves: ([[0, 'down'], [1, 'up'], [2, 'left'], [3, 'right'], [4, 'down'], [5, 'up'], [5.5, 'up'], [6, 'left'],
+      [8, 'up'], [9, 'down'], [10, 'left'], [11, 'right'], [12, 'down'], [13, 'up'], [13.5, 'down'], [14, 'up']] as [number, Key][]) },
 ];
 const OUCH = [
   'Hussein pulls a muscle he did not know he had.',

@@ -46,6 +46,8 @@ const lab: Script = async (c) => {
     await c.say('abdo', 'And Mostafa is banned since he "fixed" the fume hood. It played Amr Diab for a whole term.');
     await c.say('mostafa', 'That was a feature.');
     await c.say('rezk', 'Only Doctor Hefny may stay. You two: corridor.');
+    await c.say('hussein', 'Hefny. If they keep you in here forever, I\'m taking your sandwich.');
+    await c.say('hefny', 'If they keep me in here forever, I will finally be happy.');
     await c.say('narrator', 'Mostafa and Hussein are escorted out. Hussein waves sadly through the little door window.');
     c.solo('hefny');
     c.sync();
