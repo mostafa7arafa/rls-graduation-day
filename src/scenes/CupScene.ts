@@ -6,7 +6,7 @@ import { crowd as voices } from '../systems/crowd';
 import { tr, txt, isAr, num } from '../systems/i18n';
 import { TEAMS } from '../match/teams';
 import {
-  loadCup, saveCup, newCup, ourMatch, simulateOthers, roundKeys, teamsOf, winner, ROUND_NAMES,
+  loadCup, saveCup, newCup, mercyOn, setMercy, ourMatch, simulateOthers, roundKeys, teamsOf, winner, ROUND_NAMES,
   BEFORE, AFTER_WIN, AFTER_LOSS_STORY, AFTER_LOSS_CUP, AFTER_WARMUP_LOSS,
 } from '../match/cup';
 import type { CupState, Diff, Kind, Score, Step } from '../match/cup';
@@ -71,15 +71,18 @@ export class CupScene extends Phaser.Scene {
       t.setText(on ? (isAr() ? `◀ ${o} ▶` : `▶ ${o} ◀`) : o).setColor(on ? '#f2c94c' : '#f4f0e8');
     });
   }
-  private hub() {
+  private hub(sel = 0) {
     const cont = this.st && this.st.round < 4;
+    const mercy = mercyOn() ? 'MERCY RULE (5 GOALS): ON' : 'MERCY RULE (5 GOALS): OFF';
     this.menu('THE CUP', tr('Seven grades. One team of teachers. One trophy.'),
-      [...(cont ? ['CONTINUE THE CUP'] : []), 'NEW CUP', 'FRIENDLY MATCH', 'BACK TO TITLE'], (o) => {
+      [...(cont ? ['CONTINUE THE CUP'] : []), 'NEW CUP', 'FRIENDLY MATCH', mercy, 'BACK TO TITLE'], (o) => {
+        if (o.startsWith('MERCY RULE')) { setMercy(!mercyOn()); return this.hub(this.items.indexOf(o)); }
         if (o === 'CONTINUE THE CUP') return this.roundStart();
         if (o === 'NEW CUP') return this.chooseDiff();
         if (o === 'FRIENDLY MATCH') return this.chooseOpponent();
         this.scene.start('title');
       });
+    this.sel = sel; this.renderMenu();
   }
   private chooseDiff() {
     this.menu('DIFFICULTY', '', ['STORY: LOSE = REPLAY THE MATCH', 'CUP: LOSE = START AGAIN', 'BACK'], (o) => {

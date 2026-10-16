@@ -35,6 +35,7 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 | Pixel art source (characters, tiles, props) | `tools/art/*.mjs`, toolkit `tools/pix.mjs` |
 | Football (Season 2): court, teams, match sim + AI | `src/match/court.ts`, `teams.ts`, `sim.ts` (pure TS, no Phaser) |
 | Football screen, menus, HUD, the drama (referee, half-time talk, shouting players, Hussein's knee, last minute) | `src/scenes/MatchScene.ts` |
+| What people shout in a match (pools per situation, shuffled, no repeats; Karim's goals frustrate Hefny more each time) | `src/match/banter.ts` (+ Arabic in `src/data/ar/match.ts`) |
 | Anime cut-ins (eyes + inner line, move name on an impact frame, duels, goal, VS intro, story panels) | `src/scenes/match/cutin.ts` |
 | Penalty shootout (front view, aim + power, keeper reads the kicker's tell) | `src/scenes/match/shootout.ts` |
 | The court art (shared): garden with 2 trees + the red swings/slide/pull-up bars, crowd | `src/scenes/match/courtArt.ts` |

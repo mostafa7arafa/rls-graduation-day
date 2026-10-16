@@ -56,6 +56,11 @@ export function simulateOthers(st: CupState) {
   }
 }
 
+// ───────────────────────── settings: the mercy rule (a 5-goal lead ends the match), off by default
+export const MERCY = 5;
+export function mercyOn() { try { return localStorage.getItem('rls-mercy') === '1'; } catch { return false; } }
+export function setMercy(on: boolean) { try { localStorage.setItem('rls-mercy', on ? '1' : '0'); } catch { /* private mode */ } }
+
 // ───────────────────────── save (separate from Season 1's save)
 const KEY = 'rls-cup';
 export function loadCup(): CupState | null {

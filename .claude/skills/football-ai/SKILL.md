@@ -38,6 +38,10 @@ these are real people and a real school.
   per match). Headless code (balancer, cup simulation) must call `release()` whenever `pending`.
 - Fouls: a failed tackle from behind can be a foul (`foul` event, free kick where it happened); the second by the same
   player is a yellow card (`card`): Mr Amr's panel. ~3 fouls a match. `lost` = someone was tackled (Saif shouts).
+- Mercy rule (option in the cup hub, `rls-mercy`, off by default): `MatchConfig.mercy` = 5 ends the match after a goal
+  that makes the lead 5 (`full` event with `kind: 'mercy'`).
+- Comments: `src/match/banter.ts` pools; MatchScene `shout(key)` draws one whose speaker is present and shows it as a
+  bubble, or as a portrait toast when the speaker is off camera. Add lines freely (with Arabic); keep pools long.
 - `m.tactic[team]` (-1 defend, 0, 1 attack) shifts pressing and shooting via `aggr()`; set by the coach's half-time talk.
 - The shootout a human sees is NOT the sim's: MatchScene opens `Shootout` (front view, aim + power, keeper tells) and
   hands the kicks back with `m.finishPens(kicks)`. The sim's own `pens` phase is only for AI-vs-AI (balancer, cup sim).

@@ -515,6 +515,24 @@ const scenarios = {
     await M(() => { const m = window.game.scene.getScene('match').m; const saif = m.players.find(q => q.def.id === 'saif'); m.ball.owner = saif; m.phase = 'play'; m.lastSpecial = -1e9; m.special(m.players.find(q => q.def.id === 'warshan'), 'tackle', 0); window.game.scene.getScene('match').cutscene('warshan', 0); });
     await wait(700); await shot('duel'); await wait(2500);
     console.log('drama: mode', await M(() => `${window.game.scene.getScene('match').mode} cutting ${window.game.scene.getScene('match').cutting}`));
+    // an off-camera speaker (the coach stays at the halfway line): a portrait toast instead of a bubble
+    await M(() => { const s = window.game.scene.getScene('match'); s.cameras.main.scrollY = 0; s.camY = 0; s.m.ball.y = 10; });
+    await wait(300);
+    await M(() => { const s = window.game.scene.getScene('match'); s.speak('mostafa', 'Use your feet! Both of them!'); s.toast('hefny', 'Hefny', 'GOOOAL! Did you see that?!'); });
+    await wait(500); await shot('toast');
+    // Karim's third goal: Hefny's pool
+    await M(() => { const s = window.game.scene.getScene('match'); s.scored.set('karim', 2); s.lastBubble = -1e9; s.afterGoal(0, 'karim'); });
+    await wait(600); await shot('karim-3');
+    // the mercy rule: on, and a 5-goal lead ends it
+    await M(() => localStorage.setItem('rls-mercy', '1'));
+    await M(() => window.game.scene.getScene('cup').scene.start('cup'));
+    await wait(800);
+    await M(() => window.game.scene.getScene('cup').play('rls', 'prim5', 'solo', false, true));
+    await wait(1500); await introDone(); await wait(500);
+    await M(() => { const m = window.game.scene.getScene('match').m; m.score = [4, 0]; m.phase = 'play'; m.ball.owner = null; m.ball.x = 104; m.ball.y = m.oppGoalY(0) === 0 ? 3 : 349; m.ball.vy = m.oppGoalY(0) === 0 ? -200 : 200; m.ball.vx = 0; m.ball.z = 2; m.ball.shot = 0; m.ball.last = m.players.find(p => p.def.id === 'warshan'); });
+    await wait(6000); await shot('mercy');
+    console.log('mercy:', await M(() => { const s = window.game.scene.getScene('match'); return `${s.mode} ${s.m.phase} ${s.m.score.join('-')}`; }));
+    await M(() => localStorage.setItem('rls-mercy', '0'));
   },
 
   // the knockout shootout on its own (from a cup save at the quarter-final)

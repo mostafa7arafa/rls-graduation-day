@@ -11,6 +11,8 @@ import { CAST } from '../data/cast';
 import { Match, DT, SPECIALS } from '../match/sim';
 import type { Control, MatchEvent, Player } from '../match/sim';
 import { TEAMS } from '../match/teams';
+import { pick } from '../match/banter';
+import { mercyOn, MERCY } from '../match/cup';
 import { CW, CL } from '../match/court';
 import { specialCutin, goalCutin, talkCutin, vsIntro } from './match/cutin';
 import type { Actor } from './match/cutin';
@@ -73,6 +75,9 @@ export class MatchScene extends Phaser.Scene {
   private ref!: Phaser.GameObjects.Sprite;
   private bubbles: Phaser.GameObjects.Container[] = [];
   private lastBubble = -1e9;
+  private toasts: Phaser.GameObjects.Container[] = [];
+  private scored = new Map<string, number>();
+  private nextChatter = 0;
   private kneeDone = false;
   private lastMinute = false;
   private firstKick = true;
@@ -83,6 +88,7 @@ export class MatchScene extends Phaser.Scene {
 
   create(data: Setup = {}) {
     this.setup = data ?? {}; this.cutting = false; this.shootout = null; this.slow = 0; this.trail = []; this.bubbles = [];
+    this.toasts = []; this.scored = new Map(); this.nextChatter = 0;
     this.kneeDone = false; this.lastMinute = false; this.firstKick = true; this.lastShooter = null; this.teachersWatching = [];
     void loadSamples();
     this.mode = 'menu'; this.acc = 0; this.bodies.clear(); this.crowd = []; this.panel = []; this.padCount = -1;
@@ -91,7 +97,7 @@ export class MatchScene extends Phaser.Scene {
     music.play('stadium');
     voices.start();
     this.drawCourt();
-    this.m = new Match({ home: TEAMS[data?.home ?? 'rls'], away: TEAMS[data?.away ?? 'teachers'], controls: [], halfSeconds: HALF_SECONDS, seed: Date.now() & 0xffff, knockout: !!data?.knockout });
+    this.m = new Match({ home: TEAMS[data?.home ?? 'rls'], away: TEAMS[data?.away ?? 'teachers'], controls: [], halfSeconds: HALF_SECONDS, seed: Date.now() & 0xffff, knockout: !!data?.knockout, mercy: mercyOn() ? MERCY : 0 });
     for (const p of this.m.players) {
       const ring = this.add.ellipse(0, 0, 12, 5, this.m.teams[p.team].color, 0.55);
       const spr = this.add.sprite(0, 0, p.def.sprite, 0).setOrigin(0.5, 1);
@@ -269,6 +275,16 @@ export class MatchScene extends Phaser.Scene {
     const rkey = `amr-${Math.hypot(vx, vy) > 0.15 ? 'walk' : 'idle'}-${rdir}`;
     if (this.ref.anims.currentAnim?.key !== rkey) this.ref.play(rkey);
     this.ref.setFlipX(rdir === 'side' && vx > 0);
+    // Hefny runs up and down the pathway after the ball (he's the chant leader; he wants to be seen)
+    if (this.mode === 'play' && !this.cutting && !this.tweens.isTweening(this.hefny)) {
+      const hy = Phaser.Math.Clamp(OY + b0.y, OY + 16, OY + CL - 10), dy = hy - this.hefny.y;
+      const step = Math.sign(dy) * Math.min(Math.abs(dy), 70 * dt);
+      this.hefny.y += step; this.hefny.setDepth(this.hefny.y);
+      const hk = Math.abs(dy) > 6 ? `hefny-walk-${dy < 0 ? 'up' : 'down'}` : 'hefny-idle-side';
+      if (this.hefny.anims.currentAnim?.key !== hk) this.hefny.play(hk);
+      this.hefny.setFlipX(hk === 'hefny-idle-side');
+    }
+    this.chatter();
     for (const bb of this.bubbles) { const t = bb.getData('target') as Phaser.GameObjects.Sprite; if (t?.active) bb.setPosition(t.x, t.y - 28); }
     // the crowd gets louder as the ball gets near a goal
     const near = Math.min(this.m.ball.y, CL - this.m.ball.y);
@@ -329,12 +345,12 @@ export class MatchScene extends Phaser.Scene {
       case 'shot':
         if (!sample('shot', 0.75)) { sfx.kick(); sfx.kick(); }
         this.lastShot = this.time.now; this.lastShooter = this.m.players.find(p => p.def.id === e.who) ?? null; break;
-      case 'post': if (!sample('post', 0.8)) sfx.bump(); this.ooh(); this.bubbleFor(e.team === 0 ? 'karim' : '', 'NOOO! The post!'); break;
+      case 'post': if (!sample('post', 0.8)) sfx.bump(); this.ooh(); if (Math.random() < 0.6) this.shout(this.m.ball.last?.team === 0 ? 'post_us' : 'post_them', 300); break;
       case 'foul': this.onFoul(e.who!, e.team!, false); break;
       case 'card': this.onFoul(e.who!, e.team!, true); break;
       case 'lost': this.onLost(e.who!, e.team!); break;
       case 'wall': sfx.bump(); break;
-      case 'miss': if (this.m.ball.z >= 0 && e.team !== undefined && this.lastShot > this.time.now - 2500) this.ooh(); break;
+      case 'miss': if (this.m.ball.z >= 0 && e.team !== undefined && this.lastShot > this.time.now - 2500) { this.ooh(); if (e.team === 0 && Math.random() < 0.35) this.shout('miss_us', 400); } break;
       case 'whistle': if (this.m.phase === 'restart' && this.m.phaseT > 0) sfx.blip(900); break;
       case 'goal': {
         sfx.whistle();
@@ -346,19 +362,19 @@ export class MatchScene extends Phaser.Scene {
         else { this.ooh(); voices.applause(); this.jumpCrowd(1); }
         if (scorer) {
           this.cutting = true;
-          goalCutin(this, { hero: this.actor(scorer), big: tr('GOAL!'), small }, () => { this.cutting = false; this.acc = 0; this.prime(); this.afterGoal(e.team as 0 | 1); });
-        } else this.flash(tr('GOAL!'), small);
+          goalCutin(this, { hero: this.actor(scorer), big: tr('GOAL!'), small }, () => { this.cutting = false; this.acc = 0; this.prime(); this.afterGoal(e.team as 0 | 1, e.who ?? ''); });
+        } else { this.flash(tr('GOAL!'), small); this.afterGoal(e.team as 0 | 1, e.who ?? ''); }
         break;
       }
       case 'save':
         // the High Dam: every big Hussein save gets the chant
-        if (e.who === 'hussein') { voices.applause(); voices.hussein(); this.chant(); this.maybeKnee(); }
-        else { this.ooh(); voices.applause(); }
+        if (e.who === 'hussein') { voices.applause(); voices.hussein(); this.chant(); this.maybeKnee(); if (Math.random() < 0.55) this.shout('save_hussein', 1500); }
+        else { this.ooh(); voices.applause(); if (e.team === 1 && Math.random() < 0.45) this.shout('save_them', 600); }
         break;
       case 'half': sfx.whistle(); this.flash(tr('HALF TIME'), tr('Change ends!')); this.time.delayedCall(1300, () => this.halfTimeTalk()); this.cutting = true; break;
       case 'pens': sfx.whistle(); this.cutting = true; this.flash(tr('PENALTIES!'), '', 1200); this.time.delayedCall(1500, () => this.startShootout()); break;
       case 'special': this.cutscene(e.who!, e.team!); break;
-      case 'full': sfx.whistle(); break;
+      case 'full': sfx.whistle(); if (e.kind === 'mercy') { this.flash(tr('MERCY RULE'), tr('Five goals clear. Mr Amr ends it.'), 2400); this.shout('mercy', 600); } break;
     }
   }
   // ───────────────────────── anime cutscenes (./match/cutin.ts): freeze, cut-in, then the AI plays it
@@ -375,20 +391,39 @@ export class MatchScene extends Phaser.Scene {
     specialCutin(this, { hero: this.actor(p), move: sp.name, line: sp.line, foe, quick }, () => {
       this.cutting = false; this.m.release(); this.acc = 0; this.prime();
       this.slow = sp.kind === 'save' || sp.kind === 'tackle' ? 0.35 : 0.7;     // a beat of slow motion as it plays out
-      if (who === 'ibrahim' && this.teachersWatching.length) this.time.delayedCall(1600, () => this.bubbleAt(this.teachersWatching[2], tr('Miss Hager: ...was that for us?')));
-      if (who === 'saif') this.time.delayedCall(2600, () => this.bubbleFor('mostafa', 'That is my brother. Unfortunately.'));
+      if (who === 'ibrahim' && this.teachersWatching.length) this.time.delayedCall(1600, () => this.speak('hager', 'Miss Hager: ...was that for us?'));
+      if (who === 'saif') this.time.delayedCall(2600, () => this.speak('mostafa', 'That is my brother. Unfortunately.'));
     });
   }
 
   // ───────────────────────── the drama around the football
-  /** speech bubble over a player (by id), or over the coach / Hefny on the touchline */
-  private bubbleFor(id: string, text: string) {
-    if (!id) return;
-    const spr = id === 'mostafa' ? this.coach : id === 'hefny' ? this.hefny : (() => { const p = this.m.players.find(q => q.def.id === id); return p ? this.bodies.get(p)!.spr : null; })();
-    if (spr) this.bubbleAt(spr, tr(text));
+  // ───────────────────────── who says what (pools in src/match/banter.ts)
+  /** the sprite for a speaker: a player, the coach, Hefny, someone in the crowd ('fan' = anyone there) */
+  private speaker(id: string): Phaser.GameObjects.Sprite | null {
+    if (id === 'mostafa') return this.coach;
+    if (id === 'hefny') return this.hefny;
+    if (id === 'fan') { const seen = this.crowd.filter(c => this.onScreen(c)); return Phaser.Utils.Array.GetRandom(seen.length ? seen : this.crowd); }
+    const p = this.m.players.find(q => q.def.id === id);
+    if (p) return this.bodies.get(p)!.spr;
+    return this.crowd.find(c => c.texture.key === id) ?? null;
   }
-  private bubbleAt(target: Phaser.GameObjects.Sprite, text: string) {
-    if (this.time.now - this.lastBubble < 900) return;
+  /** the whole bubble must fit: the speaker and the space above his head, clear of the scoreboard */
+  private onScreen(o: Phaser.GameObjects.Sprite) { const v = this.cameras.main.worldView; return v.contains(o.x, o.y) && o.y - 60 > v.y + 24; }
+  /** one line from a pool, said by whoever it belongs to (skips lines whose speaker isn't here) */
+  private shout(key: string, delay = 0) {
+    const b = pick(key, id => !!this.speaker(id));
+    if (!b) return false;
+    this.time.delayedCall(delay, () => this.speak(b[0], b[1]));
+    return true;
+  }
+  /** a bubble over the speaker if the camera can see them; otherwise a small portrait toast on screen */
+  private speak(id: string, text: string) {
+    const spr = this.speaker(id); if (!spr || this.mode === 'end') return;
+    if (this.onScreen(spr)) this.bubbleAt(spr, tr(text), true);
+    else this.toast(spr.texture.key, id === 'fan' ? '' : tr(CAST[id]?.name ?? ''), tr(text));
+  }
+  private bubbleAt(target: Phaser.GameObjects.Sprite, text: string, force = false) {
+    if (!force && this.time.now - this.lastBubble < 900) return;
     this.lastBubble = this.time.now;
     const t = this.add.text(0, 0, text, txt(8, { color: '#1b1420', wordWrap: { width: 150 }, align: 'center' })).setOrigin(0.5, 1);
     const bg = this.add.rectangle(0, 4, t.width + 10, t.height + 9, 0xf4f0e8).setOrigin(0.5, 1).setStrokeStyle(1, 0x1b1420);
@@ -396,28 +431,65 @@ export class MatchScene extends Phaser.Scene {
     const c = this.add.container(target.x, target.y - 28, [bg, tail, t]).setDepth(2400).setData('target', target);
     this.bubbles.push(c);
     c.setScale(0.2); this.tweens.add({ targets: c, scale: 1, duration: 140, ease: 'Back.out' });
-    this.time.delayedCall(1900, () => this.tweens.add({ targets: c, alpha: 0, duration: 200, onComplete: () => { c.destroy(); this.bubbles = this.bubbles.filter(x => x !== c); } }));
+    this.time.delayedCall(2100, () => this.tweens.add({ targets: c, alpha: 0, duration: 200, onComplete: () => { c.destroy(); this.bubbles = this.bubbles.filter(x => x !== c); } }));
   }
-  /** someone lost the ball: Saif shouts at his teammates (he does), the coach shouts at ours */
+  /** off-camera speaker (Hefny at the other end, a fan up the pathway): face + line, pinned to the screen */
+  private toast(sprite: string, name: string, text: string) {
+    this.lastBubble = this.time.now;
+    const ar = isAr(), x0 = ar ? W - 6 : 6;
+    const t = this.add.text(ar ? -26 : 26, 0, name ? `${name}: ${text}` : text, txt(8, { color: '#f4f0e8', wordWrap: { width: 190 } })).setOrigin(ar ? 1 : 0, 0.5);
+    const h = Math.max(22, t.height + 8), w = t.width + 34;
+    const bg = this.add.rectangle(0, 0, w, h, 0x1b1420, 0.85).setOrigin(ar ? 1 : 0, 0.5).setStrokeStyle(1, 0x6d5b64);
+    const face = this.add.image(ar ? -12 : 12, 0, this.textures.exists(`${sprite}_face`) ? `${sprite}_face` : 'student1_face');
+    const c = this.add.container(x0, 0, [bg, face, t]).setScrollFactor(0).setDepth(1500).setData('h', h);
+    this.toasts.push(c);
+    if (this.toasts.length > 3) this.toasts.shift()!.destroy();
+    let y = 44;
+    for (const q of this.toasts) { q.y = y + (q.getData('h') as number) / 2; y += (q.getData('h') as number) + 3; }
+    c.setAlpha(0); this.tweens.add({ targets: c, alpha: 1, x: { from: x0 + (ar ? 20 : -20), to: x0 }, duration: 160 });
+    this.time.delayedCall(2600, () => this.tweens.add({ targets: c, alpha: 0, duration: 220, onComplete: () => { c.destroy(); this.toasts = this.toasts.filter(x => x !== c); } }));
+  }
+  /** someone lost the ball: Saif shouts at his teammates (he does), the coach at ours, Hefny celebrates */
   private onLost(who: string, team: number) {
-    if (this.time.now - this.lastBubble < 5000) return;
+    if (this.time.now - this.lastBubble < 4000) return;
     const mine = this.m.players.filter(p => p.team === team).map(p => p.def.id);
-    if (mine.includes('saif') && who !== 'saif') this.bubbleFor('saif', Phaser.Utils.Array.GetRandom(['PASS IT TO ME!', 'WHAT WAS THAT?!', 'Wake up! WAKE UP!', 'Give me the ball and stand there.']));
-    else if (team === 0 && Math.random() < 0.4) this.bubbleFor('mostafa', Phaser.Utils.Array.GetRandom(['Pass more, panic less!', 'Who is marking him?!', 'Shape! SHAPE!']));
-    else if (team === 1 && Math.random() < 0.3) this.bubbleFor('hefny', Phaser.Utils.Array.GetRandom(['YES! TAKE IT!', 'HUSSEIN IS WATCHING YOU!', 'Ole!']));
+    if (mine.includes('saif') && who !== 'saif') { if (Math.random() < 0.7) this.shout('lost_saif'); }
+    else if (team === 0 && Math.random() < 0.4) this.shout('lost_us');
+    else if (team === 1 && Math.random() < 0.3) this.shout('lost_them');
   }
-  private afterGoal(team: 0 | 1) {
-    const ids = this.m.players.map(p => p.def.id);
-    if (team === 1 && ids.includes('saif')) this.bubbleFor('saif', 'Too easy, brother.');
-    else if (team === 0 && this.m.ball.last?.def.id === 'karim') this.bubbleFor('hefny', '...Fine. Good goal, Karim. FINE.');
-    else if (team === 0) this.bubbleFor('hefny', 'GOOOAL! Did you see that?!');
-    else if (ids.includes('nasser')) this.bubbleFor('nasser', 'Alhamdulillah. Again?');
+  /** after a goal: the scorer's own pool (Karim's gets worse for Hefny with every goal), then maybe the moment's */
+  private afterGoal(team: 0 | 1, who: string) {
+    const ours = this.m.players.some(p => p.team === team && p.def.id === who);
+    const n = (this.scored.get(who) ?? 0) + (ours ? 1 : 0); if (ours) this.scored.set(who, n);
+    const [a, b] = this.m.score, diff = team === 0 ? a - b : b - a, late = this.m.half === 2 && this.m.clock > this.m.halfSeconds - 40;
+    const main = !ours ? (team === 0 ? 'goal_us' : 'goal_them')
+      : who === 'karim' && team === 0 ? `goal_karim_${Math.min(n, 3)}` : `goal_${who}`;
+    if (!this.shout(main)) this.shout(team === 0 ? 'goal_us' : 'goal_them');
+    // the moment, sometimes; a fan, sometimes; never the same two in a row
+    const moment = team === 0 ? (late ? 'late_us' : diff === 0 ? 'equalizer_us' : diff === 1 && a + b > 1 ? 'lead_us' : diff >= 3 ? 'rout_us' : '')
+      : (diff >= 3 ? 'rout_them' : '');
+    const r = Math.random();
+    if (moment && r < 0.7) this.shout(moment, 1900);
+    else if (r < 0.45) this.shout(team === 0 ? 'goal_us' : 'goal_them', 1900);
+    // Karim's second and later: Hefny can't help himself
+    if (who === 'karim' && team === 0 && n >= 2 && Math.random() < 0.5) this.shout(`goal_karim_${Math.min(n, 3)}`, 3800);
+  }
+  /** the crowd talks among themselves when nothing is happening */
+  private chatter() {
+    if (this.mode !== 'play' || this.cutting || this.m.phase !== 'play') return;
+    if (this.time.now < this.nextChatter) return;
+    const first = !this.nextChatter;
+    this.nextChatter = this.time.now + 16000 + Math.random() * 18000;
+    if (first || this.time.now - this.lastBubble < 3000) return;
+    const away = this.setup.away ?? 'teachers';
+    const special = away === 'teachers' ? 'chatter_teachers' : away === 'prep1' ? 'chatter_prep1' : away === 'sec1' ? 'chatter_sec1' : '';
+    this.shout(special && Math.random() < 0.4 ? special : 'chatter');
   }
   /** Mr Amr blows his whistle: a free kick, and on the second foul, a yellow card */
   private onFoul(who: string, team: number, card: boolean) {
     sfx.whistle();
     const name = tr(CAST[who]?.name ?? who);
-    if (!card) { this.flash(tr('FOUL!'), fmt('Mr Amr: free kick. {name}, careful.', { name }), 1400); this.bubbleAt(this.ref, tr('FOUL!')); return; }
+    if (!card) { this.flash(tr('FOUL!'), fmt('Mr Amr: free kick. {name}, careful.', { name }), 1400); this.bubbleAt(this.ref, tr('FOUL!'), true); if (Math.random() < 0.55) this.shout(team === 1 ? 'foul_on_us' : 'foul_by_us', 900); return; }
     const p = this.m.players.find(q => q.def.id === who && q.team === team);
     const ref: Actor = { sprite: 'amr', color: 0xf08a2a, name: 'Mr Amr' };
     this.cutting = true;
@@ -481,7 +553,7 @@ export class MatchScene extends Phaser.Scene {
       this.flash(tr('LAST MINUTE!'), m.score[0] === m.score[1] ? tr('Level. Somebody be a hero.') : m.score[0] > m.score[1] ? tr('Hold on. HOLD ON.') : tr('One goal. We need one goal.'), 2000);
       for (let i = 0; i < 8; i++) { tone(60, 0.12, 'sine', 0.25, 40, i * 0.6); tone(55, 0.1, 'sine', 0.18, 38, i * 0.6 + 0.16); }
       this.jumpCrowd(4);
-      this.bubbleFor('hefny', 'EVERYBODY STAND UP!');
+      this.speak('hefny', 'EVERYBODY STAND UP!');
     }
   }
   /** knockout draw: the shootout on its own front-view screen */
@@ -523,7 +595,8 @@ export class MatchScene extends Phaser.Scene {
     const r = this.result(), [a, b] = this.m.score;
     const title = r.won ? tr('WE WIN!') : a === b && this.m.pensWinner < 0 ? tr('DRAW!') : fmt('{team} win.', { team: tr(this.m.teams[1].name) });
     if (r.won) { sfx.win(); voices.roar(); }
-    const line = this.m.pensWinner >= 0 ? `${this.scoreLine()} · ${tr('PENS')} ${num(this.m.pensScore()[0])}-${num(this.m.pensScore()[1])}` : this.scoreLine();
+    const mercy = this.m.mercy > 0 && Math.abs(a - b) >= this.m.mercy;
+    const line = mercy ? `${this.scoreLine()} · ${tr('MERCY RULE')}` : this.m.pensWinner >= 0 ? `${this.scoreLine()} · ${tr('PENS')} ${num(this.m.pensScore()[0])}-${num(this.m.pensScore()[1])}` : this.scoreLine();
     const items = this.setup.cup ? ['CONTINUE'] : this.setup.friendly ? ['PLAY AGAIN', 'BACK TO CUP'] : ['PLAY AGAIN', 'QUIT TO TITLE'];
     this.time.delayedCall(900, () => this.showPanel(`${tr('FULL TIME')} · ${title}`, line, items));
   }

@@ -35,7 +35,7 @@ export type Phase = 'restart' | 'play' | 'goal' | 'half' | 'pensIntro' | 'pens' 
 export interface SlotInput { mx: number; my: number; pass: boolean; shoot: boolean; lob: boolean; through: boolean; sprint: boolean; swap: boolean }
 export const NO_INPUT: SlotInput = { mx: 0, my: 0, pass: false, shoot: false, lob: false, through: false, sprint: false, swap: false };
 export interface Control { slot: number; team: Side; role: 'field' | 'keeper' }
-export interface MatchConfig { home: TeamDef; away: TeamDef; controls: Control[]; halfSeconds: number; seed?: number; knockout?: boolean }
+export interface MatchConfig { home: TeamDef; away: TeamDef; controls: Control[]; halfSeconds: number; seed?: number; knockout?: boolean; mercy?: number }
 export type EventType = 'kick' | 'pass' | 'shot' | 'goal' | 'save' | 'catch' | 'post' | 'wall' | 'out' | 'whistle' | 'tackle' | 'miss' | 'half' | 'full' | 'switch' | 'beaten' | 'special' | 'pens' | 'pen' | 'foul' | 'card' | 'lost';
 export interface MatchEvent { t: EventType; team?: Side; who?: string; slot?: number; kind?: string }
 
@@ -109,6 +109,8 @@ export class Match {
   private lastConceded: Side = 0;
   private passFrom: Player | null = null;  // for pass-completion stats
   readonly knockout: boolean;
+  /** mercy rule: a lead this big ends the match (0 = off) */
+  readonly mercy: number;
   /** a signature move waiting for its cutscene: step() does nothing until release() */
   pending: { who: Player; kind: SpecialKind; aim: number } | null = null;
   private used = new Map<Player, number>();
@@ -126,6 +128,7 @@ export class Match {
     this.teams = [cfg.home, cfg.away];
     this.halfSeconds = cfg.halfSeconds;
     this.knockout = !!cfg.knockout;
+    this.mercy = cfg.mercy ?? 0;
     // scramble the seed first: mulberry32's opening numbers are correlated for nearby seeds (1, 2, 3...)
     this.rand = mulberry32(Math.imul((cfg.seed ?? 1) ^ 0x9E3779B9, 0x85EBCA6B) ^ 0xC2B2AE35);
     ([0, 1] as Side[]).forEach(team => {
@@ -223,6 +226,7 @@ export class Match {
       if (this.phaseT > (this.phase === 'goal' ? 2.2 : 2.6)) {
         if (this.phase === 'half') { this.half = 2; this.clock = 0; this.topTeam = 1; this.kickoff(1); }   // change ends; team 1 kicks off
         else if (this.phase === 'pensIntro') this.startPens();
+        else if (this.mercy && Math.abs(this.score[0] - this.score[1]) >= this.mercy) { this.phase = 'full'; this.phaseT = 0; this.emit('full', { kind: 'mercy' }); }
         else this.kickoff(this.lastConceded);
       }
       return;
