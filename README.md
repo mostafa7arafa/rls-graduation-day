@@ -43,7 +43,7 @@ To get out they need a **clearance form** (إخلاء طرف) signed by every de
 |---|---|---|---|
 | **Look** | buzz cut, blue hoodie | bandaged head, keeper gloves | huge curly hair, books |
 | **Superpower** | fixes any laptop, googles anything | saves penalties with his face | gets top marks |
-| **Weakness** | checks his phone at the worst moment | Habeba | gets angry |
+| **Weakness** | checks his phone at the worst moment | Nour | gets angry |
 
 </div>
 
@@ -63,7 +63,7 @@ Each teacher is a different mini-game. No two chapters play the same.
 | **4** | Mr Abdo & Mr Ahmed Rezk | **Lab mixing**: two teachers shouting opposite instructions. Hefny goes in alone |
 | **5** | Mr Abdelkareem | **Haggling**: he sells his signature as a "private lesson", paid in ful sandwiches |
 | **6** | Mr Amr | **Rhythm** push-ups on a darbuka beat |
-| **7** | Karim | **Penalty shootout** in first-person, Hussein in goal, Habeba watching |
+| **7** | Karim | **Penalty shootout** in first-person, Hussein in goal, Nour watching |
 | 🎤 | Aly & Karim Ebid | **WHO IS DUMBER?!**, a game show: TRUE or NONSENSE? |
 | 📸 | Mr Mahmoud | **The class photo**: everyone keeps ruining it |
 
