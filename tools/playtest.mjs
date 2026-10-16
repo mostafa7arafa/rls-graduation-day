@@ -129,12 +129,17 @@ const scenarios = {
     for (let i = 0; i < 120 && !(await sceneActive('photo')); i++) { await tap('z', 1, 60); await wait(350); if (i === 25) await shot('ceremony'); }
     await wait(1500); await shot('photo-start');
     // photo bot: call out anyone misbehaving, snap when clean
-    await page.evaluate(() => { window.__bot = setInterval(() => {
-      const s = window.game.scene.getScene('photo'); if (!s || !s.scene.isActive() || s.shooting || !s.spawner) return;
-      const bad = s.people.flat().filter(p => p.bad);
-      if (bad.length) s.misbehave(bad[0], false);
-      else { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' })); window.dispatchEvent(new KeyboardEvent('keyup', { key: 'x' })); }
-    }, 400); });
+    // plays at human speed: ~0.7s to notice, ~0.15s per cursor step, so a clean frame must be reachable without superhuman reflexes
+    await page.evaluate(() => { let busy = 0; window.__bot = setInterval(() => {
+      const s = window.game.scene.getScene('photo'); if (!s || !s.scene.isActive() || s.shooting || !s.spawner || performance.now() < busy) return;
+      const press = (key) => { window.dispatchEvent(new KeyboardEvent('keydown', { key })); window.dispatchEvent(new KeyboardEvent('keyup', { key })); };
+      let target = null;
+      s.people.forEach((row, r) => row.forEach((p, c) => { if (p.bad && !target) target = { r, c }; }));
+      if (!target) { press('x'); window.__snaps = (window.__snaps || 0) + 1; busy = performance.now() + 700; return; }
+      const steps = Math.abs(target.c - s.col) + (target.r !== s.row ? 1 : 0);
+      busy = performance.now() + 700 + steps * 150;
+      setTimeout(() => { s.row = target.r; s.col = target.c; press('z'); }, 700 + steps * 150 - 50);
+    }, 100); });
     let n = 0;
     // (z still gets pressed between ticks so the closing lines advance; in photo mode z just calls out the cursor's person)
     await playEncounter('photo', async () => { if (n++ === 6) await shot('photo-mid'); return false; }, 200);
@@ -142,7 +147,7 @@ const scenarios = {
     await wait(800);
     for (let i = 0; i < 40; i++) { await tap('z', 1, 60); await wait(350); if (i === 12) await shot('bench-sunset'); }
     await advance(20);
-    const st = await state(); console.log('ceremony:', st.flags.ceremony_done, 'photo', st.flags.photo_done, 'items', st.items);
+    const st = await state(); console.log('photo snaps:', await page.evaluate(() => window.__snaps), 'ceremony:', st.flags.ceremony_done, 'photo', st.flags.photo_done, 'items', st.items);
     await teleport(27, 44, 'down'); await wait(400); await tap('z'); await wait(1200);
     for (let i = 0; i < 160 && !(await sceneActive('credits')); i++) { await tap('z', 1, 40); await wait(380); }
     await wait(2000); await page.evaluate(() => { const c = window.game.scene.getScene('credits'); if (c?.roll) c.roll.y = -1050; }); await wait(500); await shot('credits-yearbook');

@@ -226,6 +226,7 @@ export const V2B: Record<string, string> = {
   "Mr Mahmoud: \"Everybody, look at the camera! Nobody move! Nobody breathe! ...Breathe a little.\"": "مسيو محمود: \"الكل يبص للكاميرا! محدش يتحرك! محدش يتنفس! ...اتنفسوا شوية.\"",
   "{name}! Look at the camera!": "{name}! بص للكاميرا!",
   "RUINED! {why}": "باظت! {why}",
+  "Everyone is looking! SNAP NOW!": "الكل باصص! صوّر دلوقتي!",
   "CLASS OF RLS · GRADUATION DAY": "دفعة مدرسة رشيد · يوم التخرج",
   "Mr Mahmoud: \"...We will use this one. It has CHARACTER. Like all of you.\"": "مسيو محمود: \"...هناخد دي. فيها روح. زيكوا كلكوا.\"",
   "Mr Mahmoud: \"PARFAIT! Everybody looking! Everybody smiling! In twenty years I have never taken a photo this clean.\"": "مسيو محمود: \"بارفيه! الكل باصص! الكل مبتسم! في عشرين سنة عمري ما صوّرت صورة نضيفة كده.\"",

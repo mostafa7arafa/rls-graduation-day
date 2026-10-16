@@ -11,7 +11,7 @@ import type { Key } from './Encounter';
 // frame is clean. There is no losing: after enough ruined photos, Mr Mahmoud keeps one "with character".
 
 type Habit = 'turn' | 'blink' | 'angry' | 'bounce' | 'side';
-interface Person { id: string; habit: Habit; ruin: string; sprite: Phaser.GameObjects.Sprite; bad: boolean; mark: Phaser.GameObjects.Text; baseY: number }
+interface Person { id: string; habit: Habit; ruin: string; sprite: Phaser.GameObjects.Sprite; bad: boolean; mark: Phaser.GameObjects.Text; baseY: number; calmUntil: number }
 
 const BACK: [string, Habit, string][] = [
   ['ibrahim', 'blink', 'Mr Ibrahim fell asleep. Standing up. A skill from forty years of teaching.'],
@@ -47,11 +47,12 @@ export class PhotoScene extends Encounter {
   private tries = 0;
   private shooting = false;
   private spawner?: Phaser.Time.TimerEvent;
+  private quietUntil = 0;  // once the frame is clean, nobody misbehaves for a moment: time to SNAP
 
   constructor() { super('photo'); }
 
   create() {
-    this.people = []; this.row = 1; this.col = 4; this.tries = 0; this.shooting = false;
+    this.people = []; this.row = 1; this.col = 4; this.tries = 0; this.shooting = false; this.quietUntil = 0;
     this.setup('#1b1420', 'title', false);
     // the court through a viewfinder
     this.add.rectangle(W / 2, 100, 440, 168, 0x3f9a4a);
@@ -65,7 +66,7 @@ export class PhotoScene extends Encounter {
         const x = x0 + i * gap, y = rowY[r];
         const sprite = this.add.sprite(x, y, id, 0).setScale(2.2).setDepth(2 + r);
         const mark = this.add.text(x, y - 34, '!', txt(8, { color: '#ff4040', backgroundColor: '#1b1420', padding: { x: 2, y: 1 }, rtl: false })).setOrigin(0.5).setDepth(8).setVisible(false);
-        return { id, habit, ruin, sprite, bad: false, mark, baseY: y };
+        return { id, habit, ruin, sprite, bad: false, mark, baseY: y, calmUntil: 0 };
       }));
     });
     // viewfinder frame on top
@@ -92,15 +93,23 @@ export class PhotoScene extends Encounter {
   private async flow() {
     await this.say(['Mr Mahmoud: "Everybody, look at the camera! Nobody move! Nobody breathe! ...Breathe a little."']);
     this.caption.setText('');
-    this.spawner = this.time.addEvent({ delay: 1100, loop: true, callback: () => this.mischief() });
+    this.startSpawner();
     this.onKey((k) => this.key(k));
   }
 
+  // each ruined photo tires everyone out: mischief gets rarer and fewer people act up at once,
+  // so a clean frame is always reachable however long it takes
+  private startSpawner() {
+    this.spawner?.remove();
+    this.spawner = this.time.addEvent({ delay: 1500 + this.tries * 350, loop: true, callback: () => this.mischief() });
+  }
+
   private mischief() {
-    if (this.shooting) return;
+    const now = this.time.now;
+    if (this.shooting || now < this.quietUntil) return;
     const bad = this.people.flat().filter(p => p.bad).length;
-    if (bad >= 2 + Math.min(2, this.tries)) return;
-    const pool = this.people.flat().filter(p => !p.bad && p.ruin);
+    if (bad >= (this.tries < 2 ? 2 : 1)) return;
+    const pool = this.people.flat().filter(p => !p.bad && p.ruin && now >= p.calmUntil);
     const p = Phaser.Utils.Array.GetRandom(pool);
     if (p) this.misbehave(p, true);
   }
@@ -132,7 +141,12 @@ export class PhotoScene extends Encounter {
       const p = this.people[this.row][this.col];
       if (p.bad) {
         sfx.select(); this.misbehave(p, false);
-        this.caption.setText(fmt('{name}! Look at the camera!', { name: tr(CAST[p.id].name) })).setColor('#f4f0e8');
+        p.calmUntil = this.time.now + 6000; // told off: behaves for a while
+        if (this.people.flat().some(q => q.bad)) this.caption.setText(fmt('{name}! Look at the camera!', { name: tr(CAST[p.id].name) })).setColor('#f4f0e8');
+        else {
+          this.quietUntil = this.time.now + 2200 + this.tries * 400;
+          this.caption.setText(tr('Everyone is looking! SNAP NOW!')).setColor('#9fe09a');
+        }
       } else sfx.back();
     } else if (k === 'back') { void this.snap(); return; }
     this.place();
@@ -148,6 +162,10 @@ export class PhotoScene extends Encounter {
       this.caption.setText(fmt('RUINED! {why}', { why: tr(p.ruin) })).setColor('#ff7a7a');
       sfx.react(CAST[p.id]?.voice ?? 300, '...');
       await this.wait(2200);
+      // "Again! From the top!" everyone resets, a little calmer than before
+      this.people.flat().forEach(q => this.misbehave(q, false));
+      this.quietUntil = this.time.now + 1500;
+      this.startSpawner();
       this.refresh(); this.caption.setText('');
       this.shooting = false;
       return;
