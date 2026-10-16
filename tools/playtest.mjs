@@ -85,7 +85,69 @@ const pad = async (i, ms = 120) => { // tap a controller button
 };
 const stick = async (x, y, ms) => { await page.evaluate(([x, y]) => { window.__pad.axes[0] = x; window.__pad.axes[1] = y; }, [x, y]); await wait(ms); await page.evaluate(() => { window.__pad.axes[0] = 0; window.__pad.axes[1] = 0; }); await wait(150); };
 
+const talkAt = async (x, y, dir, label) => { await teleport(x, y, dir); await wait(350); await tap('z'); await wait(900); if (label) await shot(label); await advance(30); };
+const YB = { yb_rahma: true, yb_warshan: true, yb_shazly: true, yb_basha: true, yb_amin: true, yb_aly: true, yb_ebid: true };
+
 const scenarios = {
+  async yearbook() {
+    await fromSave(save(CH4_DONE, ['key', 'form'], 'ground', 12, 13, 'up'));
+    await talkAt(12, 13, 'up', 'mahmoud');
+    await talkAt(9, 13, 'up', 'rahma');
+    await talkAt(6, 28, 'up', 'shazly');
+    await talkAt(30, 36, 'up', 'warshan');
+    // Aly & Karim Ebid in the canteen: three debates, then the show
+    for (let i = 0; i < 3; i++) await talkAt(49, 7, 'up', 'debate-' + i);
+    await talkAt(49, 7, 'up');
+    for (let i = 0; i < 20 && !(await sceneActive('show')); i++) { await tap('z', 1, 60); await wait(300); }
+    await wait(900); await shot('show-intro');
+    const truths = await page.evaluate(() => window.game.scene.getScene('show').constructor.CLAIMS.map(c => c.truth));
+    let shotTaken = false;
+    await playEncounter('show', async () => {
+      const st = await page.evaluate(() => { const s = window.game.scene.getScene('show'); return { a: s.answering, i: s.qIndex }; });
+      if (!st.a) return false;
+      if (!shotTaken) { await shot('show-claim'); shotTaken = true; }
+      await tap(truths[st.i] ? 'ArrowLeft' : 'ArrowRight'); await wait(300); return true;
+    });
+    await wait(800); await advance(30);
+    const st = await state(); console.log('yearbook signed:', Object.keys(st.flags).filter(k => k.startsWith('yb_')).join(','), '· items', st.items);
+    await shot('after-show');
+  },
+  async ceremony(withBook = true) {
+    await fromSave(save({ ...CH6_DONE, ...(withBook ? YB : {}) }, withBook ? ['key', 'form', 'yearbook'] : ['key', 'form'], 'ground', 31, 29, 'right'));
+    await tap('z'); await wait(800); await talkUntilBattle('penalty');
+    await page.evaluate(() => { window.__bot = setInterval(() => {
+      const s = window.game.scene.getScene('penalty'); if (!s || !s.scene.isActive()) return;
+      const press = (key) => { window.dispatchEvent(new KeyboardEvent('keydown', { key })); window.dispatchEvent(new KeyboardEvent('keyup', { key })); };
+      if (s.glint.visible && !s.__dived) { s.__dived = true; const dx = s.glint.x - 240; press(dx < -5 ? 'ArrowLeft' : dx > 5 ? 'ArrowRight' : 'ArrowUp'); }
+      if (!s.glint.visible && s.__dived && s.kicker.texture.key !== 'karim') s.__dived = false;
+      if (s.reticle.visible && !s.power.visible && !s.__aimed) { const x = s.reticle.x; if (x < 175 || x > 305) { s.__aimed = true; press('z'); } }
+      if (s.power.visible && s.__aimed && s.power.scaleY > 0.5 && s.power.scaleY < 0.7) { s.__aimed = false; press('z'); }
+    }, 15); });
+    await playEncounter('penalty', async () => { const v = await page.evaluate(() => { const s = window.game.scene.getScene('penalty'); return s.glint.visible || s.reticle.visible; }); if (v) { await wait(120); return true; } return false; }, 1500);
+    await page.evaluate(() => clearInterval(window.__bot));
+    // the ceremony runs straight after the stamp: advance until the photo starts
+    for (let i = 0; i < 120 && !(await sceneActive('photo')); i++) { await tap('z', 1, 60); await wait(350); if (i === 25) await shot('ceremony'); }
+    await wait(1500); await shot('photo-start');
+    // photo bot: call out anyone misbehaving, snap when clean
+    await page.evaluate(() => { window.__bot = setInterval(() => {
+      const s = window.game.scene.getScene('photo'); if (!s || !s.scene.isActive() || s.shooting || !s.spawner) return;
+      const bad = s.people.flat().filter(p => p.bad);
+      if (bad.length) s.misbehave(bad[0], false);
+      else { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' })); window.dispatchEvent(new KeyboardEvent('keyup', { key: 'x' })); }
+    }, 400); });
+    let n = 0;
+    // (z still gets pressed between ticks so the closing lines advance; in photo mode z just calls out the cursor's person)
+    await playEncounter('photo', async () => { if (n++ === 6) await shot('photo-mid'); return false; }, 200);
+    await page.evaluate(() => clearInterval(window.__bot));
+    await wait(800);
+    for (let i = 0; i < 40; i++) { await tap('z', 1, 60); await wait(350); if (i === 12) await shot('bench-sunset'); }
+    await advance(20);
+    const st = await state(); console.log('ceremony:', st.flags.ceremony_done, 'photo', st.flags.photo_done, 'items', st.items);
+    await teleport(27, 44, 'down'); await wait(400); await tap('z'); await wait(1200);
+    for (let i = 0; i < 160 && !(await sceneActive('credits')); i++) { await tap('z', 1, 40); await wait(380); }
+    await wait(2000); await page.evaluate(() => { const c = window.game.scene.getScene('credits'); if (c?.roll) c.roll.y = -1050; }); await wait(500); await shot('credits-yearbook');
+  },
+
   async pad() {
     await pad(0); await wait(1500);                        // A starts a new game from the title
     for (let i = 0; i < 40 && await page.evaluate(() => window.game.scene.getScene('ui')?.busy); i++) await pad(0, 80);  // A advances the intro
@@ -183,35 +245,8 @@ const scenarios = {
     const st = await state(); console.log('ch6: signed', st.flags.sig_amr, 'chapter', st.flags.chapter);
     await shot('ch7-start');
   },
-  async ch7() {
-    await fromSave(save(CH6_DONE, ['key', 'form'], 'ground', 31, 29, 'right'));
-    await tap('z'); await wait(1000); await shot('karim-talk'); await talkUntilBattle('penalty'); await shot('penalty-intro');
-    // in-page bot: dive toward the glint, and lock aim/power at good moments
-    await page.evaluate(() => { window.__bot = setInterval(() => {
-      const s = window.game.scene.getScene('penalty'); if (!s || !s.scene.isActive()) return;
-      const press = (key) => { window.dispatchEvent(new KeyboardEvent('keydown', { key })); window.dispatchEvent(new KeyboardEvent('keyup', { key })); };
-      if (s.glint.visible && !s.__dived) { s.__dived = true; const dx = s.glint.x - 240; press(dx < -5 ? 'ArrowLeft' : dx > 5 ? 'ArrowRight' : 'ArrowUp'); }
-      if (!s.glint.visible && s.__dived && s.kicker.texture.key !== 'karim') s.__dived = false;
-      if (s.reticle.visible && !s.power.visible && !s.__aimed) { const x = s.reticle.x; if (x < 175 || x > 305) { s.__aimed = true; press('z'); } }
-      if (s.power.visible && s.__aimed && s.power.scaleY > 0.5 && s.power.scaleY < 0.7) { s.__aimed = false; press('z'); }
-    }, 15); });
-    let n = 0;
-    await playEncounter('penalty', async () => {
-      const st = await page.evaluate(() => { const s = window.game.scene.getScene('penalty'); return { glint: s.glint.visible, ret: s.reticle.visible }; });
-      if (st.glint || st.ret) { if (n++ < 2) await shot('penalty-' + n); await wait(120); return true; }
-      return false;
-    }, 1500);
-    await page.evaluate(() => clearInterval(window.__bot));
-    await wait(800); await advance(60); await wait(600);
-    const st = await state(); console.log('ch7: stamp', st.flags.sig_stamp);
-    // the finale at the gate
-    await teleport(27, 44, 'down'); await wait(400); await tap('z'); await wait(1500); await shot('finale-gate');
-    for (let i = 0; i < 160 && !(await sceneActive('credits')); i++) {
-      await tap('z', 1, 40); await wait(380);
-      if (i === 30) await shot('finale-car'); if (i === 50) await shot('finale-tractor'); if (i === 70) await shot('finale-ride');
-    }
-    await wait(3000); await shot('credits'); await wait(8000); await shot('credits-2');
-  },
+  async ch7() { await scenarios.ceremony(false); },  // chapter 7 without the yearbook: the plain ceremony path
+
 
   async ch2() {
     await fromSave(save({ ...CH1_DONE, chapter: 2 }, ['key'], 'ground', 21, 36, 'down'));

@@ -149,6 +149,14 @@ export class UIScene extends Phaser.Scene {
     });
   }
 
+  /** a full-screen colour wash under the dialogue box (e.g. sunset); alpha 0 removes it */
+  private wash?: Phaser.GameObjects.Rectangle;
+  setWash(color: number, alpha: number) {
+    this.wash ??= this.add.rectangle(0, 0, W, H, color, 0).setOrigin(0).setDepth(-1);
+    this.wash.setFillStyle(color, 1);
+    this.tweens.add({ targets: this.wash, alpha, duration: 1200 });
+  }
+
   /** put the dialogue box at the top of the screen (for cutscenes happening at the bottom of the map) */
   setBoxTop(top: boolean) { this.boxY = top ? -(H - 78 - 44) : 0; this.box.setY(this.boxY); }
 
@@ -159,10 +167,13 @@ export class UIScene extends Phaser.Scene {
     if (announce) this.toast(style ? 'Controller connected!' : 'Controller disconnected');
   }
 
-  setForm(n: number) {
-    // the controls hint gives way to the form counter (by then everyone knows the controls)
-    this.form.setVisible(n >= 0); this.hint.setVisible(n < 0);
-    if (n >= 0) this.form.setText(`${tr('FORM')} ${num(n)}/${num(6)}`);
+  /** clearance form + yearbook counters (−1 = not held yet). They replace the controls hint once you have them. */
+  setForm(form: number, book = -1, bookMax = 7) {
+    const parts: string[] = [];
+    if (form >= 0) parts.push(`${tr('FORM')} ${num(form)}/${num(6)}`);
+    if (book >= 0) parts.push(`${tr('YEARBOOK')} ${num(book)}/${num(bookMax)}`);
+    this.form.setVisible(parts.length > 0).setText(parts.join('  ·  '));
+    this.hint.setVisible(parts.length === 0);
   }
 
   /** black full-screen chapter title; resolves once it is fully shown (hide with chapterCardHide) */

@@ -1,14 +1,17 @@
 // CHAPTER 7 — "The Penalty". Karim "borrowed" the principal's stamp to stamp his own grades.
-// Penalty shootout on the court, Hussein in goal, Habeba watching. Then the finale at the gate:
-// Mr Abdelfattah's confession, Karim's dead car in the gateway, and Hussein's tractor.
-import { flag, setFlag } from '../../systems/save';
+// Penalty shootout on the court, Hussein in goal, Habeba watching. Then the graduation ceremony on the court
+// (Mr Abdelfattah's confession, the yearbook moments, the class photo, the bench at sunset), and finally
+// the gate: Karim's dead car in the gateway, and Hussein's tractor.
+import { flag, setFlag, giveItem } from '../../systems/save';
+import { YEARBOOK, bookSigned } from './classmates';
 import { by, chapter } from './types';
 import type { Script, Npc, Spot } from './types';
 
 const T = 16;
 
 export function objective(): string {
-  if (flag('sig_stamp')) return 'The form is complete! Go to the main gate.';
+  if (flag('ceremony_done')) return 'Leave RLS. The main gate. For real this time.';
+  if (flag('sig_stamp')) return 'The graduation ceremony (the court).';
   return 'Beat Karim in the penalty shootout (the court).';
 }
 
@@ -36,7 +39,7 @@ export const start: Script = async (c) => {
 };
 
 export const NPCS: Npc[] = [
-  { id: 'karim', x: 33, y: 29, dir: 'side', when: () => flag('finale_started') && !flag('karim_left'), script: async (c) => {
+  { id: 'karim', x: 33, y: 29, dir: 'side', when: () => flag('finale_started') && !flag('ceremony'), script: async (c) => {
     if (flag('sig_stamp')) {
       return c.say('karim', by(c, {
         mostafa: 'Mostafa. If you ever build a robot goalkeeper, don\'t. Hussein is enough.',
@@ -65,8 +68,9 @@ export const NPCS: Npc[] = [
     await c.say('narrator', 'Hussein faints. Briefly. Gloriously.');
     setFlag('sig_stamp');
     c.toast('Signature 6/6: THE PRINCIPAL\'S STAMP');
+    await ceremony(c);
   } },
-  { id: 'habeba_court', sprite: 'habeba', x: 36, y: 33, dir: 'side', when: () => flag('finale_started'), script: async (c) => {
+  { id: 'habeba_court', sprite: 'habeba', x: 36, y: 33, dir: 'side', when: () => flag('finale_started') && !flag('ceremony'), script: async (c) => {
     await c.say('habeba', by(c, {
       mostafa: 'You three are really leaving, huh? It\'s going to be so quiet here.',
       hussein: 'Hussein! You were so cool today! ...Is your head okay? It\'s bleeding a little.',
@@ -79,16 +83,42 @@ export const NPCS: Npc[] = [
   } },
 ];
 
+// ── the ceremony: everyone lines up on the court (only during the ceremony cutscene)
+const LINEUP: [string, number, number][] = [
+  // teachers' row
+  ['hassan', 20, 23], ['abdelfattah', 22, 23], ['nasser', 24, 23], ['yasser', 26, 23], ['abdo', 30, 23], ['rezk', 32, 23],
+  ['abdelkareem', 34, 23], ['amr', 36, 23], ['ibrahim', 18, 23], ['doaa', 38, 23],
+  // students' row
+  ['aly', 19, 26], ['ebid', 21, 26], ['rahma', 23, 26], ['basha', 25, 26], ['amin', 31, 26], ['warshan', 33, 26],
+  ['shazly', 35, 26], ['karim', 37, 26], ['habeba', 39, 27], ['shimaa', 17, 26], ['hager', 16, 27],
+  // the photographer
+  ['mahmoud', 28, 31],
+];
+for (const [who, x, y] of LINEUP) NPCS.push({
+  id: `cer_${who}`, sprite: who, x, y, dir: who === 'mahmoud' ? 'up' : 'down',
+  when: () => flag('ceremony') && !flag('ceremony_done'),
+  script: async (c) => c.say(who, 'Shh. The ceremony.'),
+});
+
 export const SPOTS: Spot[] = [];
 
-/** at the main gate with all six signatures */
-export const finale: Script = async (c) => {
-  c.music(null);
-  await c.say('narrator', 'The padlock. The form. Six signatures and a stamp.');
-  setFlag('abdel_at_gate'); c.sync();
-  c.emote('abdelfattah', '!');
-  await c.say('abdelfattah', 'WAIT! My boys! Wait!');
-  await c.walk('abdelfattah', [[0, 2]]);
+/** what each classmate does at the ceremony, if they signed your yearbook */
+const MOMENTS: Record<string, string> = {
+  rahma: 'Rahma whispers: "Congratulations, Mostafa. ...And Hefny. ...And FINE. Hussein."',
+  warshan: 'Ahmed Warshan claps politely. He is the only one clapping in rhythm.',
+  shazly: 'Ibrahim El Shazly takes off his headphones. For the first time today. That means a lot.',
+  basha: 'Abdelfattah Basha and Amin stand together, sharing second place with Hefny. Basha stands slightly in front.',
+  aly: 'Aly El Fahl and Karim Ebid are arguing about who is crying more. Both are winning.',
+};
+
+const ceremony: Script = async (c) => {
+  c.sound('whistle');
+  await c.say('amr', '*TWEEEEEET* EVERYBODY! TABOOR! THE GRADUATION CEREMONY STARTS NOW! STRAIGHT LINES!');
+  setFlag('ceremony');
+  c.music('title');
+  await c.teleport('ground', 27.5, 29, 'up');
+  await c.say('narrator', 'The whole school gathers on the court. Teachers in one line. Students in another. Parents filming everything.');
+  await c.say('abdelfattah', 'My boys. My girls. Graduates of Rosetta Language School.');
   await c.say('abdelfattah', 'Before you go... a confession. There is no "Administration".');
   await c.say('abdelfattah', 'I chained the gate. I wrote the notes. I asked every teacher to keep you here, one more day.');
   c.emote('hussein', '!'); c.emote('hefny', '!'); c.emote('mostafa', '!');
@@ -99,7 +129,40 @@ export const finale: Script = async (c) => {
   await c.say('abdelfattah', 'Everyone here had... unfinished business. With you three.');
   await c.say('mostafa', '...That\'s actually really nice, sir.');
   await c.say('hefny', 'I\'m not crying. It\'s the oud perfume. It travels.');
-  await c.say('abdelfattah', 'Here. The key. The REAL one.');
+  // the yearbook pays off: everyone who signed gets a moment
+  const signed = YEARBOOK.filter(y => flag(`yb_${y.id}`)).map(y => y.id);
+  for (const id of signed) if (MOMENTS[id]) await c.say('narrator', MOMENTS[id]);
+  if (bookSigned() === 0) await c.say('narrator', 'Your classmates wave at you. You never asked them to sign anything. They wave anyway.');
+  await c.say('hassan', 'Hussein. ...Favourite disaster. That is all. Do not make it weird.');
+  await c.say('nasser', 'My sons. Spiders: six legs. Never forget me.');
+  await c.say('yasser', 'Congratulations. C-O-N-G-R-A-T-U-L-A-T-I-O-N-S. ...I spelled it for you, Hussein.');
+  await c.say('hussein', '...Thank you, Mr Yasser. I\'ll never be able to read it, but thank you.');
+  // the class photo
+  await c.say('mahmoud', 'And now, the most important moment. The class photo! Everybody, look at me. LOOK AT ME. Hussein, eyes open.');
+  await c.battle('photo');
+  setFlag('photo_done');
+  await c.say('mahmoud', 'Magnifique. This one goes on the last page of every yearbook.');
+  c.toast('YEARBOOK: THE CLASS PHOTO');
+  await c.say('abdelfattah', 'Here. The key. The REAL one. Go home, my boys.');
+  giveItem('realkey');
+  setFlag('ceremony_done'); setFlag('abdel_at_gate');
+  // sunset on the bench
+  await c.teleport('ground', 47.5, 19.5, 'down');
+  c.wash(0xff8a3a, 0.28);
+  await c.say('narrator', 'Later, when the court is empty and the sun is low over the palm trees, the three of you sit on the bench one last time.');
+  await c.say('hussein', 'So. That\'s it.');
+  await c.say('hefny', 'That\'s it.');
+  await c.say('mostafa', 'Same time next year?');
+  await c.say('hussein', 'Same bench.');
+  await c.say('hefny', 'Same idiots.');
+  await c.say('mostafa', '...Let\'s go home.');
+  c.wash(0xff8a3a, 0);
+};
+
+/** at the main gate with all six signatures */
+export const finale: Script = async (c) => {
+  c.music('ending');
+  await c.say('narrator', 'The padlock. The form. Six signatures, a stamp, and the REAL key.');
   c.openGate();
   await c.say('narrator', 'The gate swings open. And then, behind you: a sad little engine noise.');
   // Karim tries to leave first... and his car dies right in the gateway
@@ -148,4 +211,4 @@ export const finale: Script = async (c) => {
   await c.credits();
 };
 
-export const isFinaleReady = () => chapter() === 7 && flag('sig_stamp');
+export const isFinaleReady = () => chapter() === 7 && flag('ceremony_done');

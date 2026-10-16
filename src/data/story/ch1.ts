@@ -6,6 +6,7 @@ import { by, chapter } from './types';
 import type { Script, Npc, Spot } from './types';
 import { LATER } from './recurring';
 import { start as chapter2Start } from './ch2';
+import { benchTalk } from './bench';
 
 export function objective(): string {
   if (flag('gate_open')) return 'Leave RLS. For real this time.';
@@ -229,7 +230,10 @@ export const SPOTS: Spot[] = [
       hefny: '',
     }));
   } },
-  { x: 44, y: 20, w: 8, script: (c) => c.say('narrator', 'A bench. Hefny used to eat lunch here alone, revising. Then Mostafa and Hussein sat on either side and refused to leave.') },
+  { x: 44, y: 20, w: 8, script: async (c) => {
+    if (await benchTalk(c)) return;
+    await c.say('narrator', 'A bench. Hefny used to eat lunch here alone, revising. Then Mostafa and Hussein sat on either side and refused to leave.');
+  } },
 ];
 
 // ─────────────────────────────────────────────── ENDING (walk out the gate)

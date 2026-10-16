@@ -23,7 +23,7 @@ export const start: Script = async (c) => {
 };
 
 export const NPCS: Npc[] = [
-  { id: 'amr', x: 28, y: 25, dir: 'down', script: async (c) => {
+  { id: 'amr', x: 28, y: 25, dir: 'down', when: () => !flag('ceremony'), script: async (c) => {
     if (chapter() < 6) {
       return c.say('amr', '*TWEEEET* TWENTY MORE LAPS! ...Oh. You are not my class. Carry on. Walk faster.');
     }

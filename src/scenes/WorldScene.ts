@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { MAPS, LEGEND, SOLID } from '../data/map';
 import type { MapDef, PropDef } from '../data/map';
 import { TILE_NAMES } from '../data/tiles.gen';
-import { NPCS, SPOTS, intro, objective, exitScript, enterScript, signed } from '../data/story';
+import { NPCS, SPOTS, intro, objective, exitScript, enterScript, signed, bookSigned, YEARBOOK } from '../data/story';
 import type { Ctx, Npc, Face, EncounterId, Script } from '../data/story';
 import { PARTY, CAST } from '../data/cast';
 import { state, flag, setFlag, save, hasItem } from '../systems/save';
@@ -23,7 +23,7 @@ const GAP = 7;             // trail entries between party members (~14px)
 
 /** encounter id -> the scene that plays it */
 const ENCOUNTER_SCENE: Record<EncounterId, string> = {
-  hassan: 'battle', nasser: 'quiz', yasser: 'spelling', lab: 'lab', abdelkareem: 'haggle', amr: 'rhythm', karim: 'penalty',
+  hassan: 'battle', nasser: 'quiz', yasser: 'spelling', lab: 'lab', abdelkareem: 'haggle', amr: 'rhythm', karim: 'penalty', show: 'show', photo: 'photo',
 };
 /** map `when` strings: 'flag' or '!flag' */
 const cond = (when?: string) => !when || (when.startsWith('!') ? !flag(when.slice(1)) : flag(when));
@@ -162,7 +162,7 @@ export class WorldScene extends Phaser.Scene {
 
   private refreshHud() {
     this.ui.setObjective(objective());
-    this.ui.setForm(hasItem('form') ? signed() : -1);
+    this.ui.setForm(hasItem('form') ? signed() : -1, hasItem('yearbook') ? bookSigned() : -1, YEARBOOK.length);
   }
 
   // ───────────────────────────────────────── party
@@ -432,6 +432,7 @@ export class WorldScene extends Phaser.Scene {
       sound: (name) => sfx[name](),
       sync: () => this.sync(),
       boxTop: (on) => this.ui.setBoxTop(on),
+      wash: (color, alpha) => this.ui.setWash(color, alpha),
       credits: () => new Promise<void>(r => {
         this.cameras.main.fadeOut(1500, 27, 20, 32);
         this.cameras.main.once('camerafadeoutcomplete', () => {

@@ -1,7 +1,6 @@
 // Egyptian Arabic — Chapter 7 (Karim), the penalty shootout, the finale, the credits.
 export const CH7: Record<string, string> = {
   "The Penalty": "ضربات الجزاء",
-  "The form is complete! Go to the main gate.": "الاستمارة كملت! روحوا للبوابة الرئيسية.",
   "Beat Karim in the penalty shootout (the court).": "اغلبوا كريم في ضربات الجزاء (الملعب).",
 
   // ── Karim
@@ -40,8 +39,6 @@ export const CH7: Record<string, string> = {
   "Go, my boys. Go. Before I write another poem.": "يلا يا ولادي. يلا. قبل ما أكتب قصيدة تانية.",
 
   // ── the finale
-  "The padlock. The form. Six signatures and a stamp.": "القفل. الاستمارة. ست إمضاءات وختم.",
-  "WAIT! My boys! Wait!": "استنوا! يا ولادي! استنوا!",
   "Before you go... a confession. There is no \"Administration\".": "قبل ما تمشوا... اعتراف. مفيش حاجة اسمها \"الإدارة\".",
   "I chained the gate. I wrote the notes. I asked every teacher to keep you here, one more day.": "أنا اللي قفلت البوابة بالجنزير. أنا اللي كتبت الورق. أنا اللي طلبت من كل مدرس يخلّيكوا هنا يوم كمان.",
   "YOU?!": "إنت؟!",
@@ -50,7 +47,6 @@ export const CH7: Record<string, string> = {
   "Everyone here had... unfinished business. With you three.": "كل واحد هنا كان عليه حاجة لسه ماخلصتش. معاكوا إنتوا التلاتة.",
   "...That's actually really nice, sir.": "...ده لطيف أوي بصراحة يا أستاذ.",
   "I'm not crying. It's the oud perfume. It travels.": "أنا مش بعيط. دي ريحة العود. بتوصل لبعيد.",
-  "Here. The key. The REAL one.": "اتفضلوا. المفتاح. المفتاح الحقيقي.",
   "The gate swings open. And then, behind you: a sad little engine noise.": "البوابة اتفتحت. وبعدين، وراكوا: صوت موتور صغير حزين.",
   "After you— no, wait, me first— oh. Oh no.": "اتفضلوا— لأ استنوا، أنا الأول— أوه. أوه لأ.",
   "Battery's dead. Sorry, guys. It's been parked here three years. I think it forgot how to drive.": "البطارية فصلت. آسف يا رجالة. هي راكنة هنا بقالها تلات سنين. أعتقد إنها نسيت تمشي إزاي.",

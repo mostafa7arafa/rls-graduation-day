@@ -26,11 +26,11 @@ const EXTRAS: Extra[] = [
     'Twelve years I clean after you three. Today is the last time. I will miss it. A little. Very little.',
     'Do not touch the walls. The paint is from 1998. It is holding the building up.',
   ], leader: { hussein: 'Hussein. The banister. 2016. I was the one who found it. In the canteen.' } },
-  { id: 'mom', x: 45, y: 21, dir: 'down', lines: [
+  { id: 'mom', x: 42, y: 22, dir: 'down', lines: [
     'My son graduates today! He is in the top ten. The top three, actually. The top... he is in the class.',
     'Are you the three who never came to class? My son talks about you. With respect. And fear.',
   ], leader: { hefny: 'You are Hefny? My son says you always came first. Second? Third? It changes, he says.' } },
-  { id: 'dad', x: 50, y: 21, dir: 'down', lines: [
+  { id: 'dad', x: 53, y: 22, dir: 'down', lines: [
     'Twelve years of private lessons. TWELVE. Mr Abdelkareem bought a villa with my money.',
     'In my day, graduation was a handshake and a ful sandwich. Now there is a DJ?',
   ], leader: { mostafa: 'You do computers? Good. My printer prints only the letter Q. Is it a virus?' } },

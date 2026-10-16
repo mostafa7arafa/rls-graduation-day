@@ -16,11 +16,15 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 | What | File |
 |---|---|
 | All dialogue, jokes, NPCs, inspectable spots, quest logic | `src/data/story/chN.ts`, one per chapter (the screenplay — most edits go here); `recurring.ts` = characters who stay all game; `types.ts` = what a script can do (`Ctx`) |
+| Classmates + the yearbook (signatures personalise the ceremony & credits) | `src/data/story/classmates.ts` |
+| Bench talks (one per chapter, on the court bench) | `src/data/story/bench.ts` |
+| Background people (cycling lines, leader reactions) | `src/data/story/extras.ts` |
+| Controller support (buttons → keys) | `src/systems/gamepad.ts` |
 | Floors (ASCII, 1 char = 16px tile), props, stairs/warps | `src/data/map.ts` (data only — the art baker reads it) |
 | Speakers: name, portrait, voice pitch, colour | `src/data/cast.ts` |
 | Overworld: movement, party/followers, interaction, props | `src/scenes/WorldScene.ts` |
 | Mr Hassan's encounter (ACT / dodge / MERCY) | `src/scenes/BattleScene.ts` |
-| Chapter 2+ encounters, shared base `Encounter.ts`: Quiz (ch2), Spelling (ch3), Lab (ch4), Haggle (ch5), Rhythm (ch6), Penalty (ch7) | `src/scenes/encounter/*.ts` |
+| Chapter 2+ encounters, shared base `Encounter.ts`: Quiz (ch2), Spelling (ch3), Lab (ch4), Haggle (ch5), Rhythm (ch6), Penalty (ch7), Show (Aly vs Karim Ebid), Photo (ceremony) | `src/scenes/encounter/*.ts` |
 | End credits (farewell lines) | `src/scenes/CreditsScene.ts` |
 | Dialogue box, choices, HUD, toasts | `src/scenes/UIScene.ts` |
 | Save (flags/items, localStorage, versioned) | `src/systems/save.ts` |
@@ -40,7 +44,7 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 - Story state = flags in `save.ts`; `chapter` flag = current chapter. NPCs/spots/props take `when` so the world changes with the story; scripts can `teleport`, `walk`, `solo`, `chapter` (title card) — see `story/types.ts`.
 - Story state = flags in `save.ts`. Scripts are `async (c: Ctx) => {...}`; use `by(c, {mostafa, hussein, hefny})` for leader-dependent lines — that's the core comedy mechanic, every new interaction should use it where it's funny.
 - Keyboard menus must be **event-driven** (`keydown`), not polled with `JustDown` — quick taps get lost.
-- Keep jokes affectionate; these are real people. Lore and personalities: `docs/design.md`.
+- Keep jokes affectionate; these are real people. Jokes target behaviour (know-it-alls, rivalries, crushes), never bodies or skin colour. Lore and personalities: `docs/design.md`.
 - Commits: no AI attribution lines (portfolio repo).
 
 ## Skills (project-local, `.claude/skills/`)

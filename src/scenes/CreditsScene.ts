@@ -3,6 +3,8 @@ import { W, H, FONT } from '../config';
 import { music } from '../systems/music';
 import { tr, txt, isAr } from '../systems/i18n';
 import { CAST } from '../data/cast';
+import { YEARBOOK } from '../data/story/classmates';
+import { flag } from '../systems/save';
 
 // The end: everyone's farewell line scrolls past, then the three friends, then THE END.
 // Z / tap speeds it up; at the end it returns to the title.
@@ -50,6 +52,18 @@ export class CreditsScene extends Phaser.Scene {
       items.push(this.add.text(W / 2 - 120 * side, y - (ar ? 4 : 0), tr(CAST[who].name), txt(8, { color: CAST[who].color })).setOrigin(ar ? 1 : 0, 0));
       items.push(this.add.text(W / 2 - 120 * side, y + 14, tr(words), txt(8, { color: '#cfc6b8', wordWrap: { width: 280 } })).setOrigin(ar ? 1 : 0, 0));
       y += 52;
+    }
+    // the yearbook: what your classmates wrote (only the ones who signed)
+    const signed = YEARBOOK.filter(e => flag(`yb_${e.id}`));
+    if (signed.length) {
+      y += 20; line('THE YEARBOOK', 8, '#f2c94c', 30);
+      for (const e of signed) {
+        items.push(this.add.sprite(W / 2 - 150 * side, y + 10, e.id, 0).setScale(2));
+        items.push(this.add.text(W / 2 - 120 * side, y - (ar ? 4 : 0), tr(CAST[e.id].name), txt(8, { color: CAST[e.id].color })).setOrigin(ar ? 1 : 0, 0));
+        items.push(this.add.text(W / 2 - 120 * side, y + 14, tr(e.note), txt(8, { color: '#cfc6b8', wordWrap: { width: 280 } })).setOrigin(ar ? 1 : 0, 0));
+        y += 52;
+      }
+      if (flag('photo_done')) line('...and on the last page: the class photo. Everyone is in it. Hussein is blinking.', 8, '#cfc6b8', 30);
     }
     y += 20;
     line('STARRING', 8, '#f2c94c', 26);

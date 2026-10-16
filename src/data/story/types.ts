@@ -6,7 +6,7 @@ import { count } from '../../systems/save';
 
 export type Dir = 'down' | 'up' | 'side';
 export type Face = Dir | 'left' | 'right';
-export type EncounterId = 'hassan' | 'nasser' | 'yasser' | 'lab' | 'abdelkareem' | 'amr' | 'karim';
+export type EncounterId = 'hassan' | 'nasser' | 'yasser' | 'lab' | 'abdelkareem' | 'amr' | 'karim' | 'show' | 'photo';
 
 export interface Ctx {
   leader: Who;
@@ -40,6 +40,8 @@ export interface Ctx {
   sync(): void;
   /** dialogue box at the top of the screen while the action happens at the bottom */
   boxTop(on: boolean): void;
+  /** tint the whole screen (sunset = 0xff8a3a, 0.25); alpha 0 clears it */
+  wash(color: number, alpha: number): void;
   credits(): Promise<void>;
 }
 export type Script = (c: Ctx) => Promise<void>;
