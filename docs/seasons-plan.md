@@ -6,7 +6,7 @@ RLS becomes a collection of **seasons**, picked from the home menu. Each season 
 - **Season 2: The Cup (كأس المدرسة).** The school football tournament.
 - Later seasons are side stories.
 
-Status: **M1 (playable match slice) built**, 16 Oct 2026. Waiting on the author's go/no-go after playing it on real controllers and a phone. Second opinion from Pi (GPT-6.1 Sol), read-only review, merged in.
+Status (16 Oct 2026): match approved by the author ("super fun"). **The cup is built**: warm-up, QF, SF, final, penalties, bracket, story lines, both difficulties, trophy, anime cutscenes for signature moves. Not yet: real sprites for Saif / Abdallah / Elrediny / Mr Amr Karate / the other grades, the between-rounds overworld, the season menu + separate saves for Season 1. Second opinion from Pi (GPT-6.1 Sol), read-only review, merged in.
 
 ---
 

@@ -26,6 +26,16 @@ these are real people and a real school.
 | Crowd | `src/systems/crowd.ts` | Synth murmur that swells near goal, ooh / roar / applause, formant-voice chants ("Hu-SEIN! el-SADD el-AA-li!"). Music track `stadium`. |
 | Balancer | `tools/match-sim.mjs` | `node tools/match-sim.mjs rls teachers 200`: AI vs AI, W/D/L, goals, shots, saves, possession, stuck balls. |
 
+## The cup and signature moves
+- `src/match/cup.ts`: 8 teams, warm-up friendly (2nd Prep) → QF (1st Sec, Abdallah) → SF (1st Prep, Saif: the hardest) →
+  final (teachers). Other matches are simulated with the real engine; `STORY` forces the results that really happened.
+  Knockout draws go to a penalty shootout (`phase 'pens'`: 5 each, then sudden death; the human takes our kicks and is
+  the keeper for theirs). Story difficulty = replay a lost match; Cup = start again.
+- Signature moves (`SPECIALS` in sim.ts): a qualifying moment sets `m.pending` and emits `special`; the sim is frozen
+  until `release()`. MatchScene plays the anime cutscene, then releases: **the AI plays the move, not the human.** Max 2
+  per player per match, 25 s apart. Headless code (balancer, cup simulation) must call `release()` whenever `pending`.
+- Balance per round (AI rls vs them, knockout): prep2 ~99%, sec1 ~69%, prep1 ~63% (hardest), teachers ~67%.
+
 ## AI (decide → steer)
 - **Team state** each tick: attacking (we own the ball) or defending / loose ball.
 - **Defending:** players sorted by time-to-ball. Rank 0 presses (and tackles), rank 1 covers the lane between the

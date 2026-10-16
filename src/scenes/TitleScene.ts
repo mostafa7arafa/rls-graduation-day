@@ -71,7 +71,7 @@ export class TitleScene extends Phaser.Scene {
     }
     this.input.keyboard!.removeAllListeners();
     sfx.select();
-    if (this.options[this.sel] === 'FOOTBALL (PREVIEW)') { this.scene.start('match'); return; }   // Season 2 prototype
+    if (this.options[this.sel] === 'FOOTBALL (PREVIEW)') { this.scene.start('cup'); return; }   // Season 2: the cup
     if (this.options[this.sel] === 'NEW GAME') reset();
     this.cameras.main.fadeOut(400, 27, 20, 32);
     this.cameras.main.once('camerafadeoutcomplete', () => {

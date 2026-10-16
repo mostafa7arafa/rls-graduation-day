@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { W, H, FONT } from '../config';
-import { sfx } from '../systems/sfx';
+import { sfx, tone } from '../systems/sfx';
 import { music } from '../systems/music';
 import { crowd as voices } from '../systems/crowd';
 import { tr, txt, isAr, num, fmt } from '../systems/i18n';
@@ -8,7 +8,7 @@ import { bridgeOnly, padStyle, START } from '../systems/gamepad';
 import { touchActive } from '../systems/touch';
 import { startActions, readSlots, pads, clearTaps } from '../systems/actions';
 import { CAST } from '../data/cast';
-import { Match, DT } from '../match/sim';
+import { Match, DT, SPECIALS } from '../match/sim';
 import type { Control, MatchEvent, Player } from '../match/sim';
 import { TEAMS } from '../match/teams';
 import { CW, CL, GOAL_X0, GOAL_X1, GOAL_D, BOX_R } from '../match/court';
@@ -25,6 +25,7 @@ const WORLD_H = OY + CL + 48;
 const HALF_SECONDS = 150;                   // real seconds per half; the clock SHOWS 5 minutes
 type Mode = 'menu' | 'play' | 'pause' | 'end';
 type Kind = 'solo' | 'coop' | 'versus';
+interface Setup { home?: string; away?: string; kind?: Kind; knockout?: boolean; friendly?: boolean; cup?: boolean }
 
 interface Body { spr: Phaser.GameObjects.Sprite; ring: Phaser.GameObjects.Ellipse; mark: Phaser.GameObjects.Text }
 
@@ -59,17 +60,20 @@ export class MatchScene extends Phaser.Scene {
   private needPrime = false;
   private lastShot = -1e9;
   private lastOoh = -1e9;
+  private setup: Setup = {};
+  private cutting = false;
 
   constructor() { super('match'); }
 
-  create() {
+  create(data: Setup = {}) {
+    this.setup = data ?? {}; this.cutting = false;
     this.mode = 'menu'; this.acc = 0; this.bodies.clear(); this.crowd = []; this.panel = []; this.padCount = -1;
     this.cameras.main.setBackgroundColor('#2a2f2a').fadeIn(300);
     this.cameras.main.setBounds(0, 0, W, WORLD_H);
     music.play('stadium');
     voices.start();
     this.drawCourt();
-    this.m = new Match({ home: TEAMS.rls, away: TEAMS.teachers, controls: [], halfSeconds: HALF_SECONDS, seed: Date.now() & 0xffff });
+    this.m = new Match({ home: TEAMS[data?.home ?? 'rls'], away: TEAMS[data?.away ?? 'teachers'], controls: [], halfSeconds: HALF_SECONDS, seed: Date.now() & 0xffff, knockout: !!data?.knockout });
     for (const p of this.m.players) {
       const ring = this.add.ellipse(0, 0, 12, 5, this.m.teams[p.team].color, 0.55);
       const spr = this.add.sprite(0, 0, p.def.sprite, 0).setOrigin(0.5, 1);
@@ -87,7 +91,8 @@ export class MatchScene extends Phaser.Scene {
     this.stopActions = startActions();
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => this.onKey(e));
     this.events.once('shutdown', () => { this.stopActions?.(); bridgeOnly(null); voices.stop(); });
-    this.openMenu();
+    if (this.setup.home) this.time.delayedCall(400, () => this.kickoff(this.setup.kind ?? 'solo'));   // from the cup: straight in
+    else this.openMenu();
   }
 
   // ───────────────────────── the court (grey-box: drawn, to be baked in M4)
@@ -192,8 +197,10 @@ export class MatchScene extends Phaser.Scene {
       case 'CO-OP: P2 IS HUSSEIN': return this.kickoff('coop');
       case 'VERSUS: P2 IS THE TEACHERS': return this.kickoff('versus');
       case 'RESUME': return this.resume();
-      case 'RESTART': case 'PLAY AGAIN': return this.scene.restart();
-      case 'BACK TO TITLE': case 'QUIT TO TITLE': this.cameras.main.fadeOut(300); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('title')); return;
+      case 'RESTART': case 'PLAY AGAIN': return this.scene.restart(this.setup);
+      case 'BACK TO TITLE': case 'QUIT TO TITLE': return this.leave('title');
+      case 'QUIT TO CUP': case 'BACK TO CUP': return this.leave('cup', { friendly: true });
+      case 'CONTINUE': return this.leave('cup', { result: this.result() });
     }
   }
   private kickoff(kind: Kind) {
@@ -204,7 +211,15 @@ export class MatchScene extends Phaser.Scene {
     this.flash(tr('KICK OFF!'), '');
     sfx.whistle();
   }
-  private pause() { this.mode = 'pause'; bridgeOnly(null); this.showPanel(tr('PAUSED'), this.scoreLine(), ['RESUME', 'RESTART', 'QUIT TO TITLE']); }
+  private pause() { this.mode = 'pause'; bridgeOnly(null); this.showPanel(tr('PAUSED'), this.scoreLine(), ['RESUME', 'RESTART', this.setup.home ? 'QUIT TO CUP' : 'QUIT TO TITLE']); }
+  private leave(scene: string, data: object = {}) {
+    this.cameras.main.fadeOut(300); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(scene, data));
+  }
+  /** for the cup: did we win, and the score (+ penalties) */
+  private result() {
+    const [a, b] = this.m.score, pens = this.m.pensWinner >= 0;
+    return { won: a > b || this.m.pensWinner === 0, score: pens ? [a, b, ...this.m.pensScore()] : [a, b] };
+  }
   private resume() { this.clearPanel(); this.mode = 'play'; bridgeOnly([START]); this.prime(); }
   /** the button that closed a menu must not also kick the ball. Done on the next frame: the
    *  menu runs inside Phaser's key handler, before the action listener has even seen that key. */
@@ -233,7 +248,7 @@ export class MatchScene extends Phaser.Scene {
 
   // ───────────────────────── loop
   update(_t: number, delta: number) {
-    if (this.mode === 'play') {
+    if (this.mode === 'play' && !this.cutting) {
       this.syncControls();
       if (this.needPrime) { this.needPrime = false; clearTaps(); this.m.prime(readSlots(this.kind !== 'solo' && this.padCount >= 1)); this.acc = 0; }
       this.acc += Math.min(delta, 100) / 1000;
@@ -241,6 +256,7 @@ export class MatchScene extends Phaser.Scene {
         this.acc -= DT;
         this.m.step(readSlots(this.kind !== 'solo' && this.padCount >= 1));
         for (const e of this.m.events) this.onEvent(e);
+        if (this.cutting) break;
         if (this.m.phase === 'full' && this.mode === 'play') { this.end(); break; }
       }
     }
@@ -266,7 +282,7 @@ export class MatchScene extends Phaser.Scene {
       spr.setPosition(Math.round(x), Math.round(y) + 2).setFlipX(dir === 'side' && p.fx > 0).setDepth(y);
       spr.setAngle(p.dive > 0 ? (p.vx < 0 ? -80 : 80) : p.stun > 0.3 ? 10 : 0);
       ring.setPosition(x, y + 1).setDepth(y - 1);
-      mark.setVisible(p.slot >= 0).setColor(p.slot === 1 ? '#7fd0f0' : '#f2c94c').setPosition(Math.round(x), Math.round(y) - 23).setDepth(5000);
+      mark.setVisible(p.slot >= 0).setColor(p.slot === 1 ? '#7fd0f0' : '#f2c94c').setPosition(Math.round(x), Math.round(y) - 23).setDepth(2500);
     }
     const b = m.ball;
     this.ball.setPosition(OX + b.x, OY + b.y - 2 - b.z).setDepth(OY + b.y + 1).setRotation(this.ball.rotation + Math.hypot(b.vx, b.vy) * 0.0015);
@@ -282,7 +298,8 @@ export class MatchScene extends Phaser.Scene {
     this.scoreText.setText(isAr() ? `${num(m.score[1])} - ${num(m.score[0])}` : `${m.score[0]} - ${m.score[1]}`);
     const shown = Math.min(300, Math.floor(m.clock / m.halfSeconds * 300)) + (m.half - 1) * 300;
     const mm = String(Math.floor(shown / 60)).padStart(2, '0'), ss = String(shown % 60).padStart(2, '0');
-    this.clockText.setText(isAr() ? `${num(+mm).padStart(2, '٠')}:${num(+ss).padStart(2, '٠')}` : `${mm}:${ss}`);
+    if (m.pens) { const [pa, pb] = m.pensScore(); this.clockText.setText(`${tr('PENALTIES')} ${num(pa)} - ${num(pb)}`); }
+    else this.clockText.setText(isAr() ? `${num(+mm).padStart(2, '٠')}:${num(+ss).padStart(2, '٠')}` : `${mm}:${ss}`);
     const me = m.controlled(0);
     this.who.setText(me ? `▼ ${tr(CAST[me.def.id]?.name ?? me.def.id)}` : '');
     this.whoBg.setSize(this.who.width + 12, 14).setVisible(!!me);
@@ -303,7 +320,7 @@ export class MatchScene extends Phaser.Scene {
       case 'goal': {
         sfx.whistle();
         const name = tr(CAST[e.who ?? '']?.name ?? '');
-        this.flash(tr('GOAL!'), e.team === 0 ? name : fmt('{name} scores for the teachers.', { name }));
+        this.flash(tr('GOAL!'), e.team === 0 ? name : fmt('{name} scores for {team}.', { name, team: tr(this.m.teams[1].name) }));
         // the crowd is the school: they go wild for us, and groan (politely) for the teachers
         if (e.team === 0) { voices.roar(); this.time.delayedCall(2200, () => voices.ole()); this.jumpCrowd(5); }
         else { this.ooh(); voices.applause(); this.jumpCrowd(1); }
@@ -314,10 +331,87 @@ export class MatchScene extends Phaser.Scene {
         if (e.who === 'hussein') { voices.applause(); voices.hussein(); this.chant(); }
         else { this.ooh(); voices.applause(); }
         break;
-      case 'half': sfx.whistle(); this.flash(tr('HALF TIME'), this.scoreLine()); break;
+      case 'half': sfx.whistle(); this.flash(tr('HALF TIME'), tr('Change ends!')); break;
+      case 'pens': sfx.whistle(); this.flash(tr('PENALTIES!'), tr('Five each. Then sudden death.'), 2200); break;
+      case 'pen': this.onPen(e.kind!, e.team!, e.who!); break;
+      case 'special': this.cutscene(e.who!, e.team!); break;
       case 'full': sfx.whistle(); break;
     }
   }
+  /** penalty shootout: who's up, and what happened */
+  private onPen(kind: string, team: number, who: string) {
+    const name = tr(CAST[who]?.name ?? '');
+    if (kind === 'ready') {
+      const human = this.m.pens?.taker?.slot ?? -1, keeperHuman = this.m.players.some(p => p.keeper && p.slot >= 0);
+      const style = padStyle();
+      const hint = human >= 0 ? (touchActive() ? 'Aim with the pad, hold B to shoot' : style ? 'Aim with the stick, hold □ to shoot' : 'Aim with the arrows, hold X to shoot')
+        : keeperHuman ? (touchActive() ? 'In goal: hold a direction, tap A to dive' : style ? 'In goal: hold a direction, ✕ to dive' : 'In goal: hold a direction, Z to dive') : '';
+      this.flash('', `${name}${hint ? ' · ' + tr(hint) : ''}`, 1600);
+      sfx.whistle();
+    } else if (kind === 'scored') { this.flash(tr('GOAL!'), name, 1000); if (team === 0) voices.roar(); else voices.applause(); }
+    else { this.flash(tr('SAVED!'), name, 1000); this.ooh(); if (team === 1) voices.applause(); }
+  }
+
+  // ───────────────────────── anime cutscene (Blue Lock style): freeze, panel, name, then the AI plays it
+  private cutscene(who: string, team: number) {
+    const sp = SPECIALS[who]; if (!sp) { this.m.release(); return; }
+    this.cutting = true;
+    const p = this.m.players.find(q => q.def.id === who)!;
+    const color = this.m.teams[team].color;
+    const c = this.add.container(0, 0).setScrollFactor(0).setDepth(3000);
+    const dark = this.add.rectangle(0, 0, W, H, 0x000000, 0).setOrigin(0);
+    // a slanted band in the team's colour, with a white edge
+    const band = this.add.graphics();
+    band.fillStyle(0xffffff).fillPoints([{ x: -20, y: 58 }, { x: W + 20, y: 26 }, { x: W + 20, y: 214 }, { x: -20, y: 246 }].map(o => new Phaser.Math.Vector2(o.x, o.y)), true);
+    band.fillStyle(color).fillPoints([{ x: -20, y: 64 }, { x: W + 20, y: 32 }, { x: W + 20, y: 208 }, { x: -20, y: 240 }].map(o => new Phaser.Math.Vector2(o.x, o.y)), true);
+    band.fillStyle(0x1b1420, 0.35).fillPoints([{ x: -20, y: 64 }, { x: W + 20, y: 32 }, { x: W + 20, y: 208 }, { x: -20, y: 240 }].map(o => new Phaser.Math.Vector2(o.x, o.y)), true);
+    // speed lines rushing at the player
+    const lines = this.add.graphics();
+    const fx = 130, fy = 140;
+    const drawLines = () => {
+      lines.clear();
+      for (let i = 0; i < 46; i++) {
+        const a = Math.random() * Math.PI * 2, r0 = 60 + Math.random() * 60, r1 = r0 + 80 + Math.random() * 220;
+        lines.lineStyle(Math.random() < 0.3 ? 2 : 1, 0xffffff, 0.35 + Math.random() * 0.4);
+        lines.lineBetween(fx + Math.cos(a) * r0, fy + Math.sin(a) * r0, fx + Math.cos(a) * r1, fy + Math.sin(a) * r1);
+      }
+    };
+    drawLines();
+    const ticker = this.time.addEvent({ delay: 50, loop: true, callback: drawLines });
+    // the player: big portrait if we have one, else the sprite blown up
+    const hasFace = this.textures.exists(`${p.def.sprite}_face`) && who !== 'saif' && who !== 'abdallah';
+    const hero = hasFace ? this.add.image(-120, fy, `${p.def.sprite}_face`).setScale(5) : this.add.sprite(-120, fy + 10, p.def.sprite, 6).setScale(7).setFlipX(true);
+    const name = this.add.text(isAr() ? W - 30 : W - 30, 118, tr(sp.name), txt(16, { color: '#ffffff' })).setOrigin(1, 0.5).setScale(1.6).setAlpha(0).setStroke('#1b1420', 6);
+    const sub = this.add.text(W - 30, 150, tr(CAST[who]?.name ?? who), txt(8, { color: '#f2c94c' })).setOrigin(1, 0.5).setAlpha(0).setStroke('#1b1420', 4);
+    const flashRect = this.add.rectangle(0, 0, W, H, 0xffffff, 0).setOrigin(0);
+    c.add([dark, band, lines, hero, name, sub, flashRect]);
+    band.x = -W; lines.alpha = 0;
+    // whoosh in
+    tone(180, 0.35, 'sawtooth', 0.05, 1400);
+    this.tweens.add({ targets: dark, fillAlpha: 0.6, duration: 160 });
+    this.tweens.add({ targets: band, x: 0, duration: 220, ease: 'Cubic.out' });
+    this.tweens.add({ targets: lines, alpha: 1, duration: 200, delay: 120 });
+    this.tweens.add({ targets: hero, x: fx, duration: 260, delay: 80, ease: 'Back.out' });
+    // impact frame + the name slams in
+    this.time.delayedCall(380, () => {
+      flashRect.setFillStyle(0xffffff, 1); this.tweens.add({ targets: flashRect, fillAlpha: 0, duration: 140 });
+      sfx.hit(); this.cameras.main.shake(180, 0.006);
+      name.setAlpha(1).setScale(2.4); this.tweens.add({ targets: name, scale: 1.6, duration: 160, ease: 'Back.out' });
+      this.tweens.add({ targets: sub, alpha: 1, duration: 200, delay: 120 });
+      if (sp.kind === 'save') voices.hussein(); else this.ooh();
+    });
+    // and out: the AI plays the move
+    this.time.delayedCall(1750, () => {
+      this.tweens.add({ targets: [band, hero, name, sub, lines], x: `+=${W}`, duration: 220, ease: 'Cubic.in' });
+      this.tweens.add({
+        targets: dark, fillAlpha: 0, duration: 240, onComplete: () => {
+          ticker.remove(); c.destroy(); this.cutting = false; this.m.release(); this.acc = 0;
+          this.prime();
+        },
+      });
+    });
+  }
+
   /** a near miss: "ooooh" (not twice in a row) */
   private ooh() { if (this.time.now - this.lastOoh < 1500) return; this.lastOoh = this.time.now; voices.ooh(); }
   private chant() {
@@ -337,9 +431,11 @@ export class MatchScene extends Phaser.Scene {
   }
   private end() {
     this.mode = 'end'; bridgeOnly(null);
-    const [a, b] = this.m.score;
-    const title = a > b ? tr('WE WIN!') : a < b ? tr('THE TEACHERS WIN.') : tr('DRAW! Penalties: next build');
-    if (a > b) sfx.win();
-    this.time.delayedCall(900, () => this.showPanel(`${tr('FULL TIME')} · ${title}`, this.scoreLine(), ['PLAY AGAIN', 'QUIT TO TITLE']));
+    const r = this.result(), [a, b] = this.m.score;
+    const title = r.won ? tr('WE WIN!') : a === b && this.m.pensWinner < 0 ? tr('DRAW!') : fmt('{team} win.', { team: tr(this.m.teams[1].name) });
+    if (r.won) { sfx.win(); voices.roar(); }
+    const line = this.m.pensWinner >= 0 ? `${this.scoreLine()} · ${tr('PENS')} ${num(this.m.pensScore()[0])}-${num(this.m.pensScore()[1])}` : this.scoreLine();
+    const items = this.setup.cup ? ['CONTINUE'] : this.setup.friendly ? ['PLAY AGAIN', 'BACK TO CUP'] : ['PLAY AGAIN', 'QUIT TO TITLE'];
+    this.time.delayedCall(900, () => this.showPanel(`${tr('FULL TIME')} · ${title}`, line, items));
   }
 }

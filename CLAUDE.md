@@ -8,7 +8,7 @@ Top-down 2D comedy RPG (Undertale / Pokémon style), 7 chapters + finale, comple
 - `npm run build` → typecheck + production build in `dist/` (static, deployable anywhere)
 - `node tools/playtest.mjs <smoke|full|battle|ch2|...>` (chN scenarios start from a save at that chapter) → headless playthrough with screenshots in `tools/preview/playtest/` (dev server must be running). **Run `full` after any story/flow change** and look at the screenshots. `LANG=ar node tools/playtest.mjs full` does the same in Arabic.
 - `node tools/i18n-check.mjs` → lists English lines with no Arabic translation, and stale Arabic keys
-- **Season 2 football (prototype):** `http://localhost:5173/?match` (or title → FOOTBALL (PREVIEW)). `node tools/match-sim.mjs rls teachers 200` = headless AI-vs-AI balance; `node tools/playtest.mjs match` / `match2` = keyboard bot / two fake controllers. Plan + real facts: `docs/seasons-plan.md`; how it works: the `football-ai` skill.
+- **Season 2 football:** title → FOOTBALL (PREVIEW) or `http://localhost:5173/?cup` = the cup hub (cup, friendlies); `?match` = a quick match. `node tools/playtest.mjs cup` plays the whole cup (talks, cutscene, penalties, bracket, trophy). `node tools/match-sim.mjs rls teachers 200` = headless AI-vs-AI balance; `node tools/playtest.mjs match` / `match2` = keyboard bot / two fake controllers. Plan + real facts: `docs/seasons-plan.md`; how it works: the `football-ai` skill.
 
 ## Stack
 Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skills in `.claude/skills/`) + TypeScript + Vite. No other runtime deps.
@@ -34,7 +34,8 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 | Egyptian Arabic translation (English line → Masri) | `src/data/ar/chN.ts`, lookup in `src/systems/i18n.ts` |
 | Pixel art source (characters, tiles, props) | `tools/art/*.mjs`, toolkit `tools/pix.mjs` |
 | Football (Season 2): court, teams, match sim + AI | `src/match/court.ts`, `teams.ts`, `sim.ts` (pure TS, no Phaser) |
-| Football screen, menus, HUD | `src/scenes/MatchScene.ts` |
+| Football screen, menus, HUD, anime cutscenes, penalties HUD | `src/scenes/MatchScene.ts` |
+| The cup: bracket, story lines per round, simulated results, save (`rls-cup`) | `src/match/cup.ts` (data) + `src/scenes/CupScene.ts` (hub, bracket, talks, trophy) |
 | Football input (analog, two players) | `src/systems/actions.ts`; button numbers per controller: `src/systems/padmap.ts` |
 | Football crowd (murmur, chants) | `src/systems/crowd.ts` |
 

@@ -413,6 +413,48 @@ const scenarios = {
     console.log('pause:', await page.evaluate(() => window.game.scene.getScene('match').mode));
   },
 
+  // SEASON 2: the whole cup. Menus, talks, warm-up, a cutscene, a penalty shootout, the bracket, the final, the trophy
+  async cup() {
+    const M = (fn, arg) => page.evaluate(fn, arg);
+    const mode = () => M(() => window.game.scene.isActive('match') ? 'match:' + window.game.scene.getScene('match').mode : window.game.scene.isActive('cup') ? 'cup:' + window.game.scene.getScene('cup').mode : 'other');
+    const zUntil = async (want, max = 30) => { for (let i = 0; i < max && !(await mode()).startsWith(want); i++) { await tap('z', 1, 60); await wait(350); } return mode(); };
+    const finish = (a, b) => M(([a, b]) => { const m = window.game.scene.getScene('match').m; m.score = [a, b]; m.half = 2; m.clock = m.halfSeconds; }, [a, b]);
+    await page.goto(url + '/?cup'); await wait(1800); await shot('hub');
+    await tap('z'); await wait(300); await shot('difficulty'); await tap('z'); await wait(300); await tap('z'); await wait(500);   // NEW CUP, STORY, 1 PLAYER
+    await shot('talk');
+    console.log('warm-up:', await zUntil('match:play'));
+    await wait(800); await tap('z', 1, 60); await wait(1200); await shot('warmup');   // kick off (pass)
+    // a signature move: freeze + anime panel, then the AI plays on
+    await M(() => { const s = window.game.scene.getScene('match'), m = s.m, orig = m.step.bind(m); let done = false;
+      m.step = (i) => { orig(i); if (!done && m.phase === 'play') { done = true; m.special(m.players.find(p => p.def.id === 'karim'), 'shot', 0); } }; });
+    await wait(700); await shot('cutscene');
+    console.log('cutscene: frozen =', await M(() => window.game.scene.getScene('match').cutting));
+    await wait(2400); console.log('cutscene: after =', await M(() => { const s = window.game.scene.getScene('match'); return `${s.cutting} pending ${!!s.m.pending}`; }));
+    await finish(2, 0); await wait(1800); await shot('warmup-end');
+    console.log('after warm-up:', await zUntil('cup:bracket')); await wait(300); await shot('bracket-qf');
+    console.log('QF:', await zUntil('match:play'));
+    await wait(1200); await finish(1, 1); await wait(3500); await shot('pens-intro');
+    // penalties: when it's our kick, hold X then release (aim right)
+    for (let i = 0; i < 80 && (await mode()) === 'match:play'; i++) {
+      const st = await M(() => { const m = window.game.scene.getScene('match').m; return { state: m.pens?.state, human: (m.pens?.taker?.slot ?? -1) >= 0 }; });
+      if (st.state === 'aim' && st.human) { await page.keyboard.down('ArrowRight'); await page.keyboard.down('x'); await wait(450); await page.keyboard.up('x'); await page.keyboard.up('ArrowRight'); }
+      if (i === 6) await shot('pens');
+      await wait(400);
+    }
+    const r = await M(() => { const m = window.game.scene.getScene('match').m; return { pens: m.pensScore(), winner: m.pensWinner }; });
+    console.log(`shootout: ${r.pens.join('-')} winner team ${r.winner}`);
+    await shot('pens-end');
+    await zUntil('cup:', 10); await wait(300); console.log('after QF:', await mode()); await shot('after-qf');
+    // jump to the final from a save, win it, see the trophy
+    await M(() => localStorage.setItem('rls-cup', JSON.stringify({ v: 1, diff: 'story', kind: 'solo', round: 3,
+      results: { qf0: [2, 1], qf1: [3, 0], qf2: [9, 0], qf3: [1, 2], sf0: [2, 1, 4, 3], sf1: [4, 1] } })));
+    await page.goto(url + '/?cup'); await wait(1800);
+    await tap('z'); await wait(500); await shot('bracket-final');
+    console.log('final:', await zUntil('match:play')); await wait(1000); await shot('final');
+    await finish(3, 2); await wait(1800);
+    console.log('trophy:', await zUntil('cup:trophy')); await wait(1200); await shot('trophy');
+  },
+
   // a generic PC pad: Square (3) shoots, L2 (8) must NOT mute, Options (11) pauses, d-pad (axes 6/7) moves
   async generic() {
     const btn = (i, v) => page.evaluate(([i, v]) => { window.__pads[0].buttons[i].pressed = v; }, [i, v]);

@@ -25,6 +25,7 @@ export class BootScene extends Phaser.Scene {
       });
     }
     try { await Promise.all([document.fonts.load(`8px ${FONT}`), document.fonts.load(`12px ${FONT_AR}`, 'ع')]); } catch { /* fall back to system font */ }
-    this.scene.start(new URLSearchParams(location.search).has('match') ? 'match' : 'title');   // ?match = straight to football
+    const q = new URLSearchParams(location.search);   // ?match = straight to a quick match, ?cup = the cup menu
+    this.scene.start(q.has('match') ? 'match' : q.has('cup') ? 'cup' : 'title');
   }
 }
