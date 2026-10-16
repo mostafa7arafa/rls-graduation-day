@@ -1,6 +1,6 @@
 # RLS: Graduation Day
 
-Top-down 2D comedy RPG (Undertale / Pokémon style) about three real friends — Mostafa, Hussein, Mohamed Hefny — trapped in Rosetta Language School (Rashid, Egypt) on graduation day. Successor to two abandoned attempts (Phaser beat-'em-up, Godot 3D) — see `docs/design.md` for why we pivoted.
+Top-down 2D comedy RPG (Undertale / Pokémon style), 7 chapters + finale, complete in English and Egyptian Arabic, about three real friends — Mostafa, Hussein, Mohamed Hefny — trapped in Rosetta Language School (Rashid, Egypt) on graduation day. Successor to two abandoned attempts (Phaser beat-'em-up, Godot 3D) — see `docs/design.md` for why we pivoted.
 
 ## Run
 - `npm run dev` → http://localhost:5173
@@ -20,7 +20,8 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 | Speakers: name, portrait, voice pitch, colour | `src/data/cast.ts` |
 | Overworld: movement, party/followers, interaction, props | `src/scenes/WorldScene.ts` |
 | Mr Hassan's encounter (ACT / dodge / MERCY) | `src/scenes/BattleScene.ts` |
-| Chapter 2+ encounters (one mechanic each), shared base `Encounter.ts` | `src/scenes/encounter/*.ts` |
+| Chapter 2+ encounters, shared base `Encounter.ts`: Quiz (ch2), Spelling (ch3), Lab (ch4), Haggle (ch5), Rhythm (ch6), Penalty (ch7) | `src/scenes/encounter/*.ts` |
+| End credits (farewell lines) | `src/scenes/CreditsScene.ts` |
 | Dialogue box, choices, HUD, toasts | `src/scenes/UIScene.ts` |
 | Save (flags/items, localStorage, versioned) | `src/systems/save.ts` |
 | Synth SFX + voice reactions (no audio files) | `src/systems/sfx.ts` |

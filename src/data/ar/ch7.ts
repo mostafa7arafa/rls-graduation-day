@@ -105,6 +105,13 @@ export const CH7: Record<string, string> = {
   "A gentle roll. Karim picks it up, yawns, and checks his phone.": "كورة بتتدحرج بالراحة. كريم شالها، اتاوب، وبص في موبايله.",
   "Saved. Karim catches it with one hand and pretends it was easy. It was.": "اتصدّت. كريم مسكها بإيد واحدة وعمل نفسه إنها سهلة. وكانت سهلة.",
 
+  // ── Mr Abdelfattah's chapter hints
+  "Mr Yasser is upstairs, my boys. Hussein... he has been sharpening his red pen since dawn. Be strong.": "مستر ياسر فوق يا ولادي. حسين... ده بيبري القلم الأحمر من الفجر. خليك قوي.",
+  "The lab? Hefny, go. Run. I can see you shaking with excitement. Mostafa, Hussein: stay away from the beakers.": "المعمل؟ روح يا حفني. اجري. أنا شايفك بتترعش من الحماس. مصطفى وحسين: ابعدوا عن الكاسات.",
+  "Sandwiches for Mr Abdelkareem? Ask everyone. EVERYONE in this school owes you something. Some only pay the right person.": "ساندويتشات لمستر عبد الكريم؟ اسألوا الكل. كل واحد في المدرسة دي عليه ليكوا حاجة. وفيه ناس مابتدفعش غير للشخص الصح.",
+  "Mr Amr is on the court. He has been blowing that whistle since you were in first grade. Stretch first.": "كابتن عمرو في الملعب. بيصفّر بالصفارة دي من وإنتوا في أولى ابتدائي. اعملوا إحماء الأول.",
+  "Karim, on the court. Hussein: eyes on the ball. Not on Habeba. On the BALL.": "كريم في الملعب. يا حسين: عينك على الكورة. مش على حبيبة. على الكورة.",
+
   // ── credits & title
   "\"You were my favourite disaster.\"": "\"كنت أحلى مصيبة عدّت عليّا.\"",
   "\"Forty verses. All about Hussein. I am working on verse forty-one.\"": "\"أربعين بيت. كلهم عن حسين. وأنا شغال في البيت الواحد وأربعين.\"",

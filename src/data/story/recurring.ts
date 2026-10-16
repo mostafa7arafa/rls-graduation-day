@@ -1,6 +1,6 @@
 // Characters who stay around all game. Chapter 1 has their first scenes (ch1.ts);
 // from Chapter 2 on, their NPC scripts hand over to these, which branch by chapter.
-import { flag, bump } from '../../systems/save';
+import { flag, setFlag, bump } from '../../systems/save';
 import { by, chapter } from './types';
 import type { Script } from './types';
 import { sandwichTalk } from './ch5';
@@ -34,6 +34,18 @@ export const LATER: Record<'hassan' | 'abdelfattah' | 'habeba' | 'auntie' | 'gat
         'He waited all year for this quiz. Be gentle with him.',
       ]));
       return;
+    }
+    // one hint per chapter, so the guide always knows where you should be
+    const HINTS: Record<number, string> = {
+      3: 'Mr Yasser is upstairs, my boys. Hussein... he has been sharpening his red pen since dawn. Be strong.',
+      4: 'The lab? Hefny, go. Run. I can see you shaking with excitement. Mostafa, Hussein: stay away from the beakers.',
+      5: 'Sandwiches for Mr Abdelkareem? Ask everyone. EVERYONE in this school owes you something. Some only pay the right person.',
+      6: 'Mr Amr is on the court. He has been blowing that whistle since you were in first grade. Stretch first.',
+      7: 'Karim, on the court. Hussein: eyes on the ball. Not on Habeba. On the BALL.',
+    };
+    if (HINTS[chapter()] && !flag(`abdel_hint_${chapter()}`)) {
+      setFlag(`abdel_hint_${chapter()}`);
+      return c.say('abdelfattah', HINTS[chapter()]);
     }
     await c.say('abdelfattah', cycle('abdel_talks', [
       'Arabic grammar is like life, my boys. Nobody understands it. We all pretend.',
