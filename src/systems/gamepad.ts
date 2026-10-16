@@ -38,6 +38,10 @@ export function fire(type: 'keydown' | 'keyup', k: Bind) {
 }
 
 const down = new Set<Bind>();
+// The football match reads controllers itself (analog sticks, two players). While it runs, the
+// bridge only forwards the menu buttons, so a pad doesn't also drive the keyboard player.
+let only: Bind[] | null = null;
+export function bridgeOnly(keys: Bind[] | null) { only = keys; }
 const listeners: ((pad: Gamepad | null) => void)[] = [];
 
 /** 'playstation' | 'xbox' style labels for on-screen hints, or null with no controller */
@@ -54,7 +58,7 @@ export function startGamepadBridge() {
   addEventListener('gamepaddisconnected', () => listeners.forEach(f => f(null)));
   const tick = () => {
     const now = new Set<Bind>();
-    for (const p of navigator.getGamepads()) if (p && p.connected) read(p).forEach(k => now.add(k));
+    for (const p of navigator.getGamepads()) if (p && p.connected) read(p).forEach(k => { if (!only || only.includes(k)) now.add(k); });
     for (const k of now) if (!down.has(k)) { down.add(k); fire('keydown', k); }
     for (const k of [...down]) if (!now.has(k)) { down.delete(k); fire('keyup', k); }
     requestAnimationFrame(tick);

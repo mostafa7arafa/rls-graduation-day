@@ -38,7 +38,7 @@ export class TitleScene extends Phaser.Scene {
     }
 
     const canContinue = hasSave() && load() && flag('intro_done') && !flag('game_done');
-    this.options = [...(canContinue ? ['CONTINUE'] : []), 'NEW GAME', 'LANGUAGE'];
+    this.options = [...(canContinue ? ['CONTINUE'] : []), 'NEW GAME', 'FOOTBALL (PREVIEW)', 'LANGUAGE'];
     this.optTexts = this.options.map((_, i) => this.add.text(W / 2, 160 + i * 16, '', txt(8, { color: '#f4f0e8' })).setOrigin(0.5));
     this.sel = data?.sel ?? 0; this.render();
 
@@ -71,6 +71,7 @@ export class TitleScene extends Phaser.Scene {
     }
     this.input.keyboard!.removeAllListeners();
     sfx.select();
+    if (this.options[this.sel] === 'FOOTBALL (PREVIEW)') { this.scene.start('match'); return; }   // Season 2 prototype
     if (this.options[this.sel] === 'NEW GAME') reset();
     this.cameras.main.fadeOut(400, 27, 20, 32);
     this.cameras.main.once('camerafadeoutcomplete', () => {

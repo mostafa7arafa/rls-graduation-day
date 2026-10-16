@@ -8,6 +8,7 @@ Top-down 2D comedy RPG (Undertale / Pokémon style), 7 chapters + finale, comple
 - `npm run build` → typecheck + production build in `dist/` (static, deployable anywhere)
 - `node tools/playtest.mjs <smoke|full|battle|ch2|...>` (chN scenarios start from a save at that chapter) → headless playthrough with screenshots in `tools/preview/playtest/` (dev server must be running). **Run `full` after any story/flow change** and look at the screenshots. `LANG=ar node tools/playtest.mjs full` does the same in Arabic.
 - `node tools/i18n-check.mjs` → lists English lines with no Arabic translation, and stale Arabic keys
+- **Season 2 football (prototype):** `http://localhost:5173/?match` (or title → FOOTBALL (PREVIEW)). `node tools/match-sim.mjs rls teachers 200` = headless AI-vs-AI balance; `node tools/playtest.mjs match` / `match2` = keyboard bot / two fake controllers. Plan + real facts: `docs/seasons-plan.md`; how it works: the `football-ai` skill.
 
 ## Stack
 Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skills in `.claude/skills/`) + TypeScript + Vite. No other runtime deps.
@@ -32,6 +33,9 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 | Background music (text-written chiptune, maqam scales + darbuka) | `src/systems/music.ts` |
 | Egyptian Arabic translation (English line → Masri) | `src/data/ar/chN.ts`, lookup in `src/systems/i18n.ts` |
 | Pixel art source (characters, tiles, props) | `tools/art/*.mjs`, toolkit `tools/pix.mjs` |
+| Football (Season 2): court, teams, match sim + AI | `src/match/court.ts`, `teams.ts`, `sim.ts` (pure TS, no Phaser) |
+| Football screen, menus, HUD | `src/scenes/MatchScene.ts` |
+| Football input (analog, two players) | `src/systems/actions.ts` |
 
 ## Conventions
 - **Art is baked, not drawn at runtime.** Every sprite is authored pixel-by-pixel in `tools/art/` and exported to PNG. Never draw characters with Phaser Graphics — that's what made the old versions look bad. Preview sheets land in `tools/preview/` (open `map.png` / `characters.png` to eyeball).
@@ -49,4 +53,5 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 
 ## Skills (project-local, `.claude/skills/`)
 Phaser 4 official: game-setup-and-config, scenes, tilemaps, sprites-and-images, animations, tweens, cameras, input-keyboard-mouse-touch, text-and-bitmaptext, loading-assets, physics-arcade, scale-and-responsive, v4-new-features, audio-and-sound, particles.
-Design (gamedev-skills): game-feel, dialogue-systems, level-design, rpg, game-ui-ux, save-systems, audio-design, prototype-fast.
+Design (gamedev-skills): game-feel, dialogue-systems, level-design, rpg, game-ui-ux, save-systems, audio-design, prototype-fast, game-ai, physics-tuning, camera-systems.
+Project: football-ai (Season 2 match engine, AI, balancing workflow).

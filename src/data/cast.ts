@@ -26,6 +26,8 @@ export const CAST: Record<string, Speaker> = {
   shazly:      { name: 'Ibrahim El Shazly', face: 'shazly_face',     voice: 330, color: '#b0b0c0' },
   ebid:        { name: 'Karim Ebid',       face: 'ebid_face',        voice: 470, color: '#e8d27a' },
   amin:        { name: 'Amin',             face: 'amin_face',        voice: 560, color: '#9fd0a0' },
+  elrediny:    { name: 'Ahmed Elrediny',   voice: 420, color: '#9fc0ff' },
+  amrk:        { name: 'Mr Amr Karate',    voice: 230, color: '#ffb070' },
   basha:       { name: 'Abdelfattah Basha', face: 'basha_face',      voice: 350, color: '#d8e8f0' },
   mahmoud:     { name: 'Mr Mahmoud',       face: 'mahmoud_face',     voice: 260, color: '#a0b0e0' },
   bawab:       { name: 'Am Sayed (doorman)', face: 'bawab_face',     voice: 180, color: '#d8c8a0' },

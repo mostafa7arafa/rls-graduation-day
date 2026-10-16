@@ -44,6 +44,13 @@ if (scenario === 'pad') await page.addInitScript(() => {
     buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) };
   navigator.getGamepads = () => [window.__pad];
 });
+// two fake controllers for 'match2' (co-op / versus): window.__pads[i].buttons / axes
+if (scenario === 'match2') await page.addInitScript(() => {
+  const mk = (i) => ({ id: 'Xbox Wireless Controller (STANDARD GAMEPAD)', index: i, connected: true, mapping: 'standard', axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) });
+  window.__pads = [mk(0), mk(1)];
+  navigator.getGamepads = () => window.__pads;
+});
 await page.goto(url);
 await page.evaluate((l) => { localStorage.clear(); localStorage.setItem('rls-lang', l); }, lang);
 await page.reload();
@@ -360,6 +367,72 @@ const scenarios = {
     // unlock + leave
     await teleport(27, 44, 'down'); await wait(300); await tap('z'); await wait(800); await advance(); await shot('gate-open');
     await hold('ArrowDown', 1200); await wait(800); await shot('ending'); await advance(); await wait(2500); await shot('credits');
+  },
+
+  // SEASON 2 prototype: a keyboard bot plays a whole match (short halves) against the teachers
+  async match() {
+    await page.goto(url + '/?match'); await wait(1800); await shot('menu');
+    await page.evaluate(() => { const s = window.game.scene.getScene('match'); s.m.halfSeconds = 25; });
+    await tap('z'); await wait(500); await shot('kickoff');
+    const keys = new Set();
+    const press = async (want) => { for (const k of keys) if (!want.has(k)) { await page.keyboard.up(k); keys.delete(k); } for (const k of want) if (!keys.has(k)) { await page.keyboard.down(k); keys.add(k); } };
+    let shots = 0, passes = 0, frames = 0;
+    for (let i = 0; i < 1200; i++) {
+      const st = await page.evaluate(() => { const s = window.game.scene.getScene('match'); const m = s.m, me = m.controlled(0), b = m.ball;
+        return { mode: s.mode, phase: m.phase, me: me && { x: me.x, y: me.y }, has: b.owner === me, ball: { x: b.x, y: b.y }, score: m.score, clock: m.clock, half: m.half }; });
+      if (st.mode !== 'play') break;
+      const want = new Set();
+      const tgt = st.has ? { x: 104, y: 0 } : st.ball;
+      if (st.me) {
+        const dx = tgt.x - st.me.x, dy = tgt.y - st.me.y;
+        if (dx > 6) want.add('ArrowRight'); if (dx < -6) want.add('ArrowLeft'); if (dy > 6) want.add('ArrowDown'); if (dy < -6) want.add('ArrowUp');
+        if (!st.has) want.add('Shift');
+      }
+      await press(want);
+      if (st.has && st.me.y < 110) { await page.keyboard.down('x'); await wait(350); await page.keyboard.up('x'); shots++; }
+      else if (st.has && i % 9 === 4) { await tap('z', 1, 30); passes++; }
+      else if (!st.has && i % 6 === 0) await tap('x', 1, 30);   // tackle
+      if (i === 20) await shot('play');
+      if (i === 60) await shot('play2');
+      if (i === 30) console.log('fps', await page.evaluate(() => window.game.loop.actualFps.toFixed(0)));
+      frames++; await wait(110);
+    }
+    await press(new Set());
+    await wait(1500); await shot('end');
+    const r = await page.evaluate(() => { const s = window.game.scene.getScene('match'); return { mode: s.mode, score: s.m.score, phase: s.m.phase, stats: s.m.stats, half: s.m.half, clock: s.m.clock }; });
+    console.log(`match: mode ${r.mode}, phase ${r.phase}, half ${r.half} clock ${r.clock.toFixed(1)}, iterations ${frames}, score ${r.score.join('-')}, bot shots ${shots}, passes ${passes}, sim shots ${r.stats.shots.join('/')}, saves ${r.stats.saves.join('/')}`);
+    // pause menu works mid-match
+    await tap('z'); await wait(600);   // PLAY AGAIN
+    await tap('z'); await wait(400); await tap('Escape'); await wait(300); await shot('pause');
+    console.log('pause:', await page.evaluate(() => window.game.scene.getScene('match').mode));
+  },
+
+  // two controllers: co-op (pad 2 = Hussein) then versus (pad 2 = the teachers)
+  async match2() {
+    const btn = (p, i, v) => page.evaluate(([p, i, v]) => { window.__pads[p].buttons[i].pressed = v; }, [p, i, v]);
+    const ax = (p, x, y) => page.evaluate(([p, x, y]) => { window.__pads[p].axes[0] = x; window.__pads[p].axes[1] = y; }, [p, x, y]);
+    await page.goto(url + '/?match'); await wait(1800);
+    await tap('ArrowDown'); await tap('z'); await wait(600);           // CO-OP
+    const who = () => page.evaluate(() => { const m = window.game.scene.getScene('match').m; return [0, 1].map(s => { const p = m.controlled(s); return p ? `${p.def.id}${p.keeper ? '(gk)' : ''}/team${p.team}` : '-'; }); });
+    console.log('co-op controls:', (await who()).join(' · '));
+    // pad 2 moves Hussein right with the analog stick (half tilt) — he should move, at a fraction of full speed
+    const before = await page.evaluate(() => window.game.scene.getScene('match').m.gk(0).x);
+    await ax(1, 0.6, 0); await wait(700); await ax(1, 0, 0);
+    const after = await page.evaluate(() => window.game.scene.getScene('match').m.gk(0).x);
+    console.log(`co-op: pad 2 moved Hussein ${Math.round(after - before)}px right`);
+    // pad 1 (P1): stick up with the ball, then B held = charge, released = shot
+    await ax(0, 0, -1); await wait(1200); await ax(0, 0, 0);
+    await btn(0, 1, true); await wait(400);
+    const charge = await page.evaluate(() => { const m = window.game.scene.getScene('match').m; return m.controlled(0)?.charge ?? -1; });
+    await btn(0, 1, false); await wait(300); await shot('coop');
+    console.log(`co-op: P1 charge while holding B = ${charge.toFixed(2)}`);
+    // the bridge must not turn pad 1 into keyboard presses during play (no double input), but Start still pauses
+    await btn(0, 9, true); await wait(150); await btn(0, 9, false); await wait(300);
+    console.log('Start pauses:', await page.evaluate(() => window.game.scene.getScene('match').mode));
+    await tap('ArrowDown'); await tap('z'); await wait(800);            // RESTART -> menu
+    await tap('ArrowDown', 2); await tap('z'); await wait(600);         // VERSUS
+    console.log('versus controls:', (await who()).join(' · '));
+    await ax(1, 0, -1); await wait(600); await ax(1, 0, 0); await shot('versus');
   },
 };
 

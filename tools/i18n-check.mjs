@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 
 // every .ts under src/data/story and src/scenes (recursively), plus the cast
 const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(`${d}/${e.name}`) : e.name.endsWith('.ts') ? [`${d}/${e.name}`] : []);
-const FILES = [...walk('src/data/story'), 'src/data/cast.ts', ...walk('src/scenes')];
+const FILES = [...walk('src/data/story'), 'src/data/cast.ts', ...walk('src/scenes'), 'src/match/teams.ts'];
 // strings that are code, not text shown to players
 const IGNORE = /^(#[0-9a-f]{3,8}|[a-z][A-Za-z0-9_]*(-[a-z0-9]+)*|[A-Z]+(,[A-Z]+)+|keydown-\w+|\w+\.\w+|assets\/.*|\.\.?\/.*|[!?#.<3]+|\d+px|[▼▶◀♥Z ]+|LANGUAGE: ENGLISH|LANGUAGE|SOUND|RLS|[RBYW]{1,3})$/;  // shown as-is on purpose: the bilingual menu label, the logo, lab paint codes
 
