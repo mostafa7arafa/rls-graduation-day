@@ -19,7 +19,7 @@
 
 <a href="https://mostafa7arafa.github.io/rls-graduation-day/"><img src="https://img.shields.io/badge/%E2%96%B6%20PLAY%20IN%20YOUR%20BROWSER-f2c94c?style=for-the-badge&labelColor=1b1420&logoColor=1b1420" height="44" alt="Play in your browser" /></a>
 
-<sub>Desktop browser · keyboard or Xbox / PlayStation controller · no install</sub>
+<sub>Desktop or phone · keyboard, touch, or Xbox / PlayStation controller · no install</sub>
 
 <br/><br/>
 
@@ -136,17 +136,18 @@ The whole game is playable in **English** and **Egyptian Arabic (مصري)**. Th
 
 ## 🎮 Controls
 
-| Action | Keyboard | Xbox | PlayStation |
-|---|:-:|:-:|:-:|
-| Walk | Arrow keys | D-pad / left stick | D-pad / left stick |
-| Talk, confirm | `Z` | A | ✕ |
-| Back | `X` | B | ○ |
-| Run | `Shift` | X / RT | □ / R2 |
-| Swap leader | `Tab` | LB / RB | L1 / R1 |
-| Menu | `Enter` | Start | Options |
-| Mute | `M` | View | Share |
+| Action | Keyboard | Xbox | PlayStation | Phone |
+|---|:-:|:-:|:-:|:-:|
+| Walk | Arrow keys | D-pad / left stick | D-pad / left stick | on-screen pad |
+| Talk, confirm | `Z` | A | ✕ | A (or tap) |
+| Back | `X` | B | ○ | B |
+| Run | `Shift` | X / RT | □ / R2 | hold RUN |
+| Swap leader | `Tab` | LB / RB | L1 / R1 | SWAP |
+| Pause menu | `Esc` | Start | Options | MENU |
 
-Plug a controller in at any time. The on-screen hints switch to your controller's buttons.
+The pause menu changes the language, toggles sound, and goes back to the title screen (progress is saved).
+
+Plug a controller in at any time. The on-screen hints switch to your controller's buttons. On a phone, hold it sideways; on Android it goes fullscreen, and on iPhone use **Share → Add to Home Screen** for fullscreen.
 
 ---
 
