@@ -1,0 +1,21 @@
+{
+  "name": "rls",
+  "private": true,
+  "version": "0.1.0",
+  "description": "RLS: Graduation Day — a top-down comedy RPG about three friends trapped in Rosetta Language School",
+  "type": "module",
+  "scripts": {
+    "art": "node tools/bake-art.mjs",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.56.1",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.7"
+  }
+}
