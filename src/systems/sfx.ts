@@ -19,6 +19,7 @@ export function audio(): AudioContext | null {
   } catch { return null; }
 }
 export const musicOut = () => (audio(), musicBus);
+export const sfxOut = () => (audio(), sfxBus);
 
 // wake audio on the first gesture, and go quiet while the tab is hidden (timers get throttled there)
 for (const ev of ['keydown', 'pointerdown']) addEventListener(ev, () => audio(), { once: true });

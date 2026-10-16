@@ -2,8 +2,9 @@ import * as Phaser from 'phaser';
 import { W, H, FONT } from '../config';
 import { sfx } from '../systems/sfx';
 import { music } from '../systems/music';
+import { crowd as voices } from '../systems/crowd';
 import { tr, txt, isAr, num, fmt } from '../systems/i18n';
-import { bridgeOnly, padStyle, START, MUTE } from '../systems/gamepad';
+import { bridgeOnly, padStyle, START } from '../systems/gamepad';
 import { touchActive } from '../systems/touch';
 import { startActions, readSlots, pads, clearTaps } from '../systems/actions';
 import { CAST } from '../data/cast';
@@ -56,6 +57,8 @@ export class MatchScene extends Phaser.Scene {
   private padCount = -1;
   private camY = 0;
   private needPrime = false;
+  private lastShot = -1e9;
+  private lastOoh = -1e9;
 
   constructor() { super('match'); }
 
@@ -63,7 +66,8 @@ export class MatchScene extends Phaser.Scene {
     this.mode = 'menu'; this.acc = 0; this.bodies.clear(); this.crowd = []; this.panel = []; this.padCount = -1;
     this.cameras.main.setBackgroundColor('#2a2f2a').fadeIn(300);
     this.cameras.main.setBounds(0, 0, W, WORLD_H);
-    music.play('finale');
+    music.play('stadium');
+    voices.start();
     this.drawCourt();
     this.m = new Match({ home: TEAMS.rls, away: TEAMS.teachers, controls: [], halfSeconds: HALF_SECONDS, seed: Date.now() & 0xffff });
     for (const p of this.m.players) {
@@ -82,7 +86,7 @@ export class MatchScene extends Phaser.Scene {
 
     this.stopActions = startActions();
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => this.onKey(e));
-    this.events.once('shutdown', () => { this.stopActions?.(); bridgeOnly(null); });
+    this.events.once('shutdown', () => { this.stopActions?.(); bridgeOnly(null); voices.stop(); });
     this.openMenu();
   }
 
@@ -194,14 +198,14 @@ export class MatchScene extends Phaser.Scene {
   }
   private kickoff(kind: Kind) {
     this.kind = kind; this.clearPanel(); this.mode = 'play';
-    bridgeOnly([START, MUTE]);
+    bridgeOnly([START]);
     this.syncControls(true);
     this.prime();
     this.flash(tr('KICK OFF!'), '');
     sfx.whistle();
   }
   private pause() { this.mode = 'pause'; bridgeOnly(null); this.showPanel(tr('PAUSED'), this.scoreLine(), ['RESUME', 'RESTART', 'QUIT TO TITLE']); }
-  private resume() { this.clearPanel(); this.mode = 'play'; bridgeOnly([START, MUTE]); this.prime(); }
+  private resume() { this.clearPanel(); this.mode = 'play'; bridgeOnly([START]); this.prime(); }
   /** the button that closed a menu must not also kick the ball. Done on the next frame: the
    *  menu runs inside Phaser's key handler, before the action listener has even seen that key. */
   private prime() { this.needPrime = true; }
@@ -220,9 +224,9 @@ export class MatchScene extends Phaser.Scene {
   private refreshHint() {
     const style = padStyle();
     let h = touchActive() ? 'A pass · B shoot/tackle · RUN · SWAP player'
-      : style === 'playstation' ? '✕ pass · ○ shoot/tackle · R2 run · L1 switch'
-      : style === 'xbox' ? 'A pass · B shoot/tackle · RT run · LB switch'
-      : 'Z pass · X shoot/tackle · SHIFT run · TAB switch';
+      : style === 'playstation' ? '✕ pass · □ shoot · ○ lob · △ thru · R2 run · L1 swap'
+      : style === 'xbox' ? 'A pass · X shoot · B lob · Y thru · RT run · LB swap'
+      : 'Z pass · X shoot · C lob · V thru · SHIFT run · TAB swap';
     if (this.kind !== 'solo' && this.padCount < 1) h = 'Player 2: connect a controller';
     this.hint.setText(tr(h));
   }
@@ -241,8 +245,11 @@ export class MatchScene extends Phaser.Scene {
       }
     }
     this.render();
+    // the crowd gets louder as the ball gets near a goal
+    const near = Math.min(this.m.ball.y, CL - this.m.ball.y);
+    if (this.mode === 'play') voices.excite(Phaser.Math.Clamp(1 - near / 130, 0, 1));
     // camera: follow the ball, leaning towards where the attack is going (frame-rate independent)
-    const b = this.m.ball, lean = b.owner ? (b.owner.team === 0 ? -30 : 30) : b.vy * 0.12;
+    const b = this.m.ball, lean = b.owner ? this.m.attackDir(b.owner.team) * 30 : b.vy * 0.12;
     const want = Phaser.Math.Clamp(OY + b.y + lean - H / 2, 0, WORLD_H - H);
     this.camY += (want - this.camY) * (1 - Math.exp(-5 * Math.min(delta, 100) / 1000));
     this.cameras.main.scrollY = Math.round(this.camY);
@@ -288,25 +295,31 @@ export class MatchScene extends Phaser.Scene {
   private onEvent(e: MatchEvent) {
     switch (e.t) {
       case 'kick': case 'pass': case 'tackle': sfx.kick(); break;
-      case 'shot': sfx.kick(); sfx.kick(); break;
-      case 'post': case 'wall': sfx.bump(); break;
+      case 'shot': sfx.kick(); sfx.kick(); this.lastShot = this.time.now; break;
+      case 'post': sfx.bump(); this.ooh(); break;
+      case 'wall': sfx.bump(); break;
+      case 'miss': if (this.m.ball.z >= 0 && e.team !== undefined && this.lastShot > this.time.now - 2500) this.ooh(); break;
       case 'whistle': if (this.m.phase === 'restart' && this.m.phaseT > 0) sfx.blip(900); break;
       case 'goal': {
-        sfx.whistle(); sfx.cheer();
+        sfx.whistle();
         const name = tr(CAST[e.who ?? '']?.name ?? '');
         this.flash(tr('GOAL!'), e.team === 0 ? name : fmt('{name} scores for the teachers.', { name }));
-        this.jumpCrowd(e.team === 0 ? 5 : 1);
+        // the crowd is the school: they go wild for us, and groan (politely) for the teachers
+        if (e.team === 0) { voices.roar(); this.time.delayedCall(2200, () => voices.ole()); this.jumpCrowd(5); }
+        else { this.ooh(); voices.applause(); this.jumpCrowd(1); }
         break;
       }
       case 'save':
         // the High Dam: every big Hussein save gets the chant
-        if (e.who === 'hussein') { sfx.cheer(); this.chant(); }
-        else sfx.react(300, '!');
+        if (e.who === 'hussein') { voices.applause(); voices.hussein(); this.chant(); }
+        else { this.ooh(); voices.applause(); }
         break;
       case 'half': sfx.whistle(); this.flash(tr('HALF TIME'), this.scoreLine()); break;
       case 'full': sfx.whistle(); break;
     }
   }
+  /** a near miss: "ooooh" (not twice in a row) */
+  private ooh() { if (this.time.now - this.lastOoh < 1500) return; this.lastOoh = this.time.now; voices.ooh(); }
   private chant() {
     this.flash('', tr('Hefny: HUSSEIN, THE HIGH DAM!!'), 1400);
     this.jumpCrowd(3);

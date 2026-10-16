@@ -21,7 +21,9 @@ these are real people and a real school.
 | Teams + stats | `src/match/teams.ts` | Stats 0..1. 4-a-side: `gk` + 3 `field` + `sub`. `ai.reaction` = decision interval (s), `ai.aggression` 0..1. Every name shown goes through `tr()`: add Arabic in `src/data/ar/match.ts`. |
 | The match | `src/match/sim.ts` | **Pure TS, no Phaser, no DOM, no Math.random.** Fixed `DT`, seeded RNG, all input passed to `step()`. Team 0 attacks UP (y to 0), team 1 attacks DOWN. |
 | Drawing + menus | `src/scenes/MatchScene.ts` | Reads `m.events` after each step for sound/text. Never puts rules here. |
-| Input | `src/systems/actions.ts` | One `SlotInput` per human. Keyboard + touch (touch presses keys) + first pad = P1; second pad = P2. Quick taps are latched until the next read. |
+| Input | `src/systems/actions.ts` | One `SlotInput` per human. Keyboard + touch (touch presses keys) + first pad = P1; second pad = P2. Quick taps are latched until the next read. FIFA layout: Cross pass, Square shoot (hold), Circle lob, Triangle through, R2/R1 sprint, L1 switch. |
+| Button numbers per controller | `src/systems/padmap.ts` | Standard pads (real DualSense/Xbox) vs generic Linux pads (e.g. the author's QIXIONG: Cross 0, Circle 1, Square 3, Triangle 4, L1 6, R1 7, L2 8, R2 9, Share 10, Options 11, d-pad on axes 6/7). Never hard-code button indices anywhere else. |
+| Crowd | `src/systems/crowd.ts` | Synth murmur that swells near goal, ooh / roar / applause, formant-voice chants ("Hu-SEIN! el-SADD el-AA-li!"). Music track `stadium`. |
 | Balancer | `tools/match-sim.mjs` | `node tools/match-sim.mjs rls teachers 200`: AI vs AI, W/D/L, goals, shots, saves, possession, stuck balls. |
 
 ## AI (decide → steer)
@@ -39,6 +41,18 @@ these are real people and a real school.
 - Steering is arrive-to-target with an acceleration cap (`movePlayers`), then circle separation.
 
 ## Rules that bit us (keep them)
+- **Measure before tuning.** When goals or shots look wrong, trace it: where shots come from, how many defenders are goal-side,
+  who is stunned (see the debug pattern in the balancer). Twice the real cause was a bug, not a number: defenders stunned by
+  spammed tackles, and a defender chasing from *behind* shoving the carrier toward goal.
+- **Only a goal-side defender holds firm** against the carrier in the collision push; from behind it's an even shove.
+- **Passing:** the receiver is AI-driven until he traps it (control switches on reception, not on the pass), runs to the meeting
+  point, has a bigger trap radius (MAGNET). Pass speed is weighted to arrive (~80 px/s left). Clear every `receiving` flag on
+  any trap/catch, or defenders chase passes that are gone.
+- **Shot / tackle chances are per second,** scaled by the team's decision interval: a per-decision chance compounds to "always".
+- **Teams change ends at half time** (`topTeam`): the court isn't symmetric (wall one side, garden the other). Use
+  `attackDir/ownGoalY/oppGoalY`, never `team === 0`.
+- **Seed scrambling + fixed starting think timers:** mulberry32's first numbers correlate for seeds 1,2,3..., which gave the home
+  team a ~57% edge in mirror matches. Any new per-team randomness at match start must not come from the first draws.
 - **Update order alternates every tick.** With a fixed order, the team that thinks first lost ~55/45 in a mirror
   match. Verify any AI change with a mirror match (`rls rls`): W and L must be within noise.
 - **Control follows the ball:** a pass switches the human to the receiver, a pickup switches to the carrier.
@@ -46,15 +60,18 @@ these are real people and a real school.
   inside Phaser's handler before the action listener sees it).
 - **The keyboard bridge is filtered during play** (`bridgeOnly([START, MUTE])`), or pad 1 would also drive the
   keyboard player. Restore it (`bridgeOnly(null)`) for every menu.
-- Pace now: goals ~6-7 per match, shots ~12-16 per team, no stuck balls. A change that pushes goals above ~9 or
-  makes 0-0 common needs a reason.
+- Pace now: goals ~10 per match (5 real minutes), shots ~19 per team, passes ~75% completed, no keeper punts, no stuck balls.
+  Mirror matches (`rls rls 600`) must be even within noise. AI `rls` beats AI `teachers` ~2:1 on purpose: a human in control is
+  usually worse than the AI at first, and the author found the old teachers overpowered.
 
 ## Workflow
 1. Change the sim, then `npx tsc --noEmit`.
 2. `node tools/match-sim.mjs rls teachers 200` and a mirror `rls rls 200` (deadlocks, balance, side bias).
 3. `node tools/playtest.mjs match` (keyboard bot plays a full short match), `node tools/playtest.mjs match2`
-   (two fake controllers: co-op, P2 = Hussein; versus, P2 = the teachers; charge; Start pauses). Look at the
+   (two fake controllers: co-op, P2 = Hussein; versus, P2 = the teachers; Square charges; Start pauses),
+   `node tools/playtest.mjs generic` (a generic Linux pad: Square shoots, L2 doesn't mute, d-pad on axes, Options pauses). Look at the
    screenshots in `tools/preview/playtest/match*/`.
 4. Phones: the touch buttons press keys, so the keyboard path covers them; test with real touch events (CDP
    `Input.dispatchTouchEvent`), not synthetic PointerEvents (`setPointerCapture` rejects those).
-5. AI-vs-AI balance is not fun-testing. The author plays it on real controllers before anything is "done".
+5. AI-vs-AI balance is not fun-testing. The author plays it on real controllers before anything is "done" — and **nothing is
+   pushed (= deployed) until they have.**

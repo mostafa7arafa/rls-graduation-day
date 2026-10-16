@@ -27,18 +27,18 @@ export const TEAMS: Record<string, TeamDef> = {
       P('karim', 'karim', 0.74, 0.95, 0.6, 0.65, 0.45),
     ],
     sub: P('shazly', 'shazly', 0.66, 0.55, 0.6, 0.55, 0.6),
-    ai: { reaction: 0.2, aggression: 0.6 },
+    ai: { reaction: 0.16, aggression: 0.6 },
   },
   // the final: stronger, smarter, and they know it
   teachers: {
     id: 'teachers', name: 'The Teachers', short: 'TEACHERS', color: 0xf4f0e8,
-    gk: P('rezk', 'rezk', 0.55, 0.4, 0.5, 0.3, 0.5, 0.72),
+    gk: P('rezk', 'rezk', 0.5, 0.4, 0.5, 0.3, 0.5, 0.82),
     field: [
       P('amrk', 'amr', 0.74, 0.7, 0.95, 0.75, 0.7),
       P('ibrahim', 'ibrahim', 0.82, 0.7, 0.65, 0.92, 0.5),
-      P('nasser', 'nasser', 0.58, 0.97, 0.6, 0.55, 0.6),
+      P('nasser', 'nasser', 0.54, 0.95, 0.58, 0.5, 0.55),
     ],
     sub: P('abdelfattah', 'abdelfattah', 0.6, 0.6, 0.7, 0.5, 0.55),
-    ai: { reaction: 0.12, aggression: 0.75 },
+    ai: { reaction: 0.12, aggression: 0.7 },
   },
 };

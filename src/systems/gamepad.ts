@@ -4,28 +4,30 @@
 //
 //   D-pad / left stick -> arrows      A / Cross  -> Z (talk, confirm)    B / Circle -> X (back)
 //   X / Square, R2      -> Shift (run) LB / RB / L1 / R1 -> Tab (swap)    Start / Options -> Esc (menu)
-//   Back / Share        -> M (mute)
+// Button numbers differ between controllers (generic PC pads on Linux), so they come from padmap.ts.
+// No controller button mutes: on generic pads that used to land on L2 and switched the sound off mid-game.
+
+import { layout, dpad } from './padmap';
 
 export interface Bind { key: string; code: string; keyCode: number }
 const K = (key: string, code: string, keyCode: number): Bind => ({ key, code, keyCode });
 export const UP = K('ArrowUp', 'ArrowUp', 38), DOWN = K('ArrowDown', 'ArrowDown', 40), LEFT = K('ArrowLeft', 'ArrowLeft', 37), RIGHT = K('ArrowRight', 'ArrowRight', 39);
 export const OK = K('z', 'KeyZ', 90), BACK = K('x', 'KeyX', 88), RUN = K('Shift', 'ShiftLeft', 16), SWAP = K('Tab', 'Tab', 9), START = K('Escape', 'Escape', 27), MUTE = K('m', 'KeyM', 77);
 
-/** which logical keys are held on this pad (standard mapping) */
+/** which logical keys are held on this pad */
 function read(p: Gamepad): Bind[] {
-  const b = (i: number) => !!p.buttons[i]?.pressed;
-  const ax = p.axes[0] ?? 0, ay = p.axes[1] ?? 0, DEAD = 0.5;
+  const l = layout(p), b = (i: number) => !!p.buttons[i]?.pressed;
+  const ax = p.axes[0] ?? 0, ay = p.axes[1] ?? 0, DEAD = 0.5, d = dpad(p, l);
   const held: Bind[] = [];
-  if (b(12) || ay < -DEAD) held.push(UP);
-  if (b(13) || ay > DEAD) held.push(DOWN);
-  if (b(14) || ax < -DEAD) held.push(LEFT);
-  if (b(15) || ax > DEAD) held.push(RIGHT);
-  if (b(0)) held.push(OK);
-  if (b(1)) held.push(BACK);
-  if (b(2) || b(7)) held.push(RUN);
-  if (b(4) || b(5)) held.push(SWAP);
-  if (b(9)) held.push(START);
-  if (b(8)) held.push(MUTE);
+  if (d.y < 0 || ay < -DEAD) held.push(UP);
+  if (d.y > 0 || ay > DEAD) held.push(DOWN);
+  if (d.x < 0 || ax < -DEAD) held.push(LEFT);
+  if (d.x > 0 || ax > DEAD) held.push(RIGHT);
+  if (b(l.cross)) held.push(OK);
+  if (b(l.circle)) held.push(BACK);
+  if (b(l.square) || b(l.r2)) held.push(RUN);
+  if (b(l.l1) || b(l.r1)) held.push(SWAP);
+  if (b(l.start)) held.push(START);
   return held;
 }
 
@@ -49,7 +51,7 @@ export function padStyle(): 'playstation' | 'xbox' | null {
   const p = [...navigator.getGamepads()].find(Boolean);
   if (!p) return null;
   if (/xbox|xinput|045e/i.test(p.id)) return 'xbox';   // Microsoft first: some PS pads also say "Wireless Controller"
-  return /054c|playstation|dualsense|dualshock|wireless controller/i.test(p.id) ? 'playstation' : 'xbox';
+  return /054c|playstation|dualsense|dualshock|wireless controller/i.test(p.id) || p.mapping !== 'standard' ? 'playstation' : 'xbox';  // generic PC pads are mostly PS-shaped
 }
 export const onPadChange = (fn: (pad: Gamepad | null) => void) => { listeners.push(fn); };
 

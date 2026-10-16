@@ -142,6 +142,19 @@ const TRACKS = {
     ],
     drums: 'D . D T D . T T',
   },
+  // football on the court: terrace drums and a chant-like horn riff, kept low under the crowd
+  stadium: {
+    bpm: 124, drumVol: 1.1,
+    voices: [
+      { wave: 'square', vol: 0.016, notes: `
+        E4 . G4 . A4 . G4 E4 | D4 . E4 . . . . . | E4 . G4 . A4 . B4 A4 | G4 . E4 . . . . . |
+        A4 . A4 . G4 . E4 . | G4 . A4 . B4 . . . | A4 . G4 . E4 . D4 . | E4 . . . . . . . |` },
+      { wave: 'triangle', vol: 0.07, staccato: true, notes: `
+        E2 . E2 . B2 . E2 . | D2 . D2 . A2 . D2 . | E2 . E2 . B2 . E2 . | G2 . D2 . E2 . . . |
+        A2 . A2 . E2 . A2 . | G2 . G2 . D2 . G2 . | A2 . G2 . E2 . D2 . | E2 . E2 . E2 . . . |` },
+    ],
+    drums: 'D . T k D D T k | D . T k D . T T',
+  },
   // the ending: slow and warm, Bayati on G — twelve years in eight bars
   ending: {
     bpm: 76, drumVol: 0.4,

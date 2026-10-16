@@ -4,16 +4,20 @@
 //   player 1 = keyboard (and the phone's on-screen buttons, which press keys) + the first controller
 //   player 2 = the second controller, or the only controller if the keyboard is player 1 in co-op
 //
-//              keyboard           controller (Xbox / PlayStation)     phone
+//              keyboard           PlayStation (Xbox)                  phone
 //   move       arrows / WASD      left stick / d-pad                  d-pad
-//   pass       Z / J / Space      A / Cross                           A
-//   shoot      X / K  (hold)      B / Circle (hold)                   B
-//   sprint     Shift              RT / RB  (R2 / R1)                  RUN
-//   switch     Tab / Q            LB / LT  (L1 / L2)                  SWAP
+//   pass       Z / J / Space      Cross (A)                           A
+//   shoot      X / K  (hold)      Square (X), hold                    B
+//   lob        C / L              Circle (B)                          -
+//   through    V / I              Triangle (Y)                        -
+//   sprint     Shift              R2 / R1 (RT / RB)                   RUN
+//   switch     Tab / Q            L1 / L2 (LB / LT)                   SWAP
 //
-// Without the ball, pass = switch to the player nearest the ball, shoot = tackle.
+// Without the ball: pass = switch to the player nearest the ball, shoot or lob = tackle.
+// Button numbers per controller come from padmap.ts (generic PC pads number them differently).
 
 import type { SlotInput } from '../match/sim';
+import { layout, dpad } from './padmap';
 
 const held = new Set<string>();
 const tapped = new Set<string>();   // pressed since the last read: a quick tap between two frames still counts
@@ -33,26 +37,28 @@ function keyboard(): SlotInput {
   let mx = (any('ArrowRight', 'KeyD') ? 1 : 0) - (any('ArrowLeft', 'KeyA') ? 1 : 0);
   let my = (any('ArrowDown', 'KeyS') ? 1 : 0) - (any('ArrowUp', 'KeyW') ? 1 : 0);
   if (mx && my) { mx *= Math.SQRT1_2; my *= Math.SQRT1_2; }
-  return { mx, my, pass: any('KeyZ', 'KeyJ', 'Space', 'Enter'), shoot: any('KeyX', 'KeyK'), sprint: any('ShiftLeft', 'ShiftRight'), swap: any('Tab', 'KeyQ') };
+  return { mx, my, pass: any('KeyZ', 'KeyJ', 'Space', 'Enter'), shoot: any('KeyX', 'KeyK'), lob: any('KeyC', 'KeyL'), through: any('KeyV', 'KeyI'), sprint: any('ShiftLeft', 'ShiftRight'), swap: any('Tab', 'KeyQ') };
 }
 
 function pad(p: Gamepad): SlotInput {
-  const b = (i: number) => !!p.buttons[i]?.pressed;
+  const l = layout(p), b = (i: number) => !!p.buttons[i]?.pressed;
   let mx = p.axes[0] ?? 0, my = p.axes[1] ?? 0;
   const m = Math.hypot(mx, my), DEAD = 0.2;
   if (m < DEAD) { mx = 0; my = 0; } else { const k = Math.min(1, (m - DEAD) / (1 - DEAD)) / m; mx *= k; my *= k; }  // radial dead zone, rescaled
-  if (b(12) || b(13) || b(14) || b(15)) {
-    mx = (b(15) ? 1 : 0) - (b(14) ? 1 : 0); my = (b(13) ? 1 : 0) - (b(12) ? 1 : 0);
+  const d = dpad(p, l);
+  if (d.x || d.y) {
+    mx = d.x; my = d.y;
     if (mx && my) { mx *= Math.SQRT1_2; my *= Math.SQRT1_2; }
   }
-  return { mx, my, pass: b(0), shoot: b(1), sprint: b(7) || b(5), swap: b(4) || b(6) };
+  // the FIFA layout: X pass, Square shoot, Circle lob, Triangle through ball, R2/R1 sprint, L1 switch
+  return { mx, my, pass: b(l.cross), shoot: b(l.square), lob: b(l.circle), through: b(l.triangle), sprint: b(l.r2) || b(l.r1), swap: b(l.l1) || b(l.l2) };
 }
 
 export const pads = () => [...navigator.getGamepads()].filter((p): p is Gamepad => !!p && p.connected);
 
 const merge = (a: SlotInput, b: SlotInput): SlotInput => ({
   mx: Math.abs(b.mx) > Math.abs(a.mx) ? b.mx : a.mx, my: Math.abs(b.my) > Math.abs(a.my) ? b.my : a.my,
-  pass: a.pass || b.pass, shoot: a.shoot || b.shoot, sprint: a.sprint || b.sprint, swap: a.swap || b.swap,
+  pass: a.pass || b.pass, shoot: a.shoot || b.shoot, lob: a.lob || b.lob, through: a.through || b.through, sprint: a.sprint || b.sprint, swap: a.swap || b.swap,
 });
 
 /** is there a device for player 2? (a 2nd controller, or one controller while the keyboard plays P1) */

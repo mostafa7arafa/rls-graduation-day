@@ -20,7 +20,7 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 | Classmates + the yearbook (signatures personalise the ceremony & credits) | `src/data/story/classmates.ts` |
 | Bench talks (one per chapter, on the court bench) | `src/data/story/bench.ts` |
 | Background people (cycling lines, leader reactions) | `src/data/story/extras.ts` |
-| Controller support (buttons → keys) | `src/systems/gamepad.ts` |
+| Controller support (buttons → keys) | `src/systems/gamepad.ts` (layouts from `padmap.ts`: generic PC pads number buttons differently) |
 | Floors (ASCII, 1 char = 16px tile), props, stairs/warps | `src/data/map.ts` (data only — the art baker reads it) |
 | Speakers: name, portrait, voice pitch, colour | `src/data/cast.ts` |
 | Overworld: movement, party/followers, interaction, props | `src/scenes/WorldScene.ts` |
@@ -35,7 +35,8 @@ Phaser **4** (not 3 — APIs differ, e.g. no `setTintFill`; use the Phaser skill
 | Pixel art source (characters, tiles, props) | `tools/art/*.mjs`, toolkit `tools/pix.mjs` |
 | Football (Season 2): court, teams, match sim + AI | `src/match/court.ts`, `teams.ts`, `sim.ts` (pure TS, no Phaser) |
 | Football screen, menus, HUD | `src/scenes/MatchScene.ts` |
-| Football input (analog, two players) | `src/systems/actions.ts` |
+| Football input (analog, two players) | `src/systems/actions.ts`; button numbers per controller: `src/systems/padmap.ts` |
+| Football crowd (murmur, chants) | `src/systems/crowd.ts` |
 
 ## Conventions
 - **Art is baked, not drawn at runtime.** Every sprite is authored pixel-by-pixel in `tools/art/` and exported to PNG. Never draw characters with Phaser Graphics — that's what made the old versions look bad. Preview sheets land in `tools/preview/` (open `map.png` / `characters.png` to eyeball).

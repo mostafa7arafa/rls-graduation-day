@@ -51,6 +51,12 @@ if (scenario === 'match2') await page.addInitScript(() => {
   window.__pads = [mk(0), mk(1)];
   navigator.getGamepads = () => window.__pads;
 });
+// a generic PC pad (like the QIXIONG): no standard mapping, Linux button order, d-pad on axes 6/7
+if (scenario === 'generic') await page.addInitScript(() => {
+  window.__pads = [{ id: 'QIXIONG PC Gamepad (Vendor: 2563 Product: 0526)', index: 0, connected: true, mapping: '', axes: [0, 0, 0, 0, 0, 0, 0, 0],
+    buttons: Array.from({ length: 15 }, () => ({ pressed: false, value: 0 })) }];
+  navigator.getGamepads = () => window.__pads;
+});
 await page.goto(url);
 await page.evaluate((l) => { localStorage.clear(); localStorage.setItem('rls-lang', l); }, lang);
 await page.reload();
@@ -379,17 +385,17 @@ const scenarios = {
     let shots = 0, passes = 0, frames = 0;
     for (let i = 0; i < 1200; i++) {
       const st = await page.evaluate(() => { const s = window.game.scene.getScene('match'); const m = s.m, me = m.controlled(0), b = m.ball;
-        return { mode: s.mode, phase: m.phase, me: me && { x: me.x, y: me.y }, has: b.owner === me, ball: { x: b.x, y: b.y }, score: m.score, clock: m.clock, half: m.half }; });
+        return { mode: s.mode, phase: m.phase, gy: m.oppGoalY(0), me: me && { x: me.x, y: me.y }, has: b.owner === me, ball: { x: b.x, y: b.y }, score: m.score, clock: m.clock, half: m.half }; });
       if (st.mode !== 'play') break;
       const want = new Set();
-      const tgt = st.has ? { x: 104, y: 0 } : st.ball;
+      const tgt = st.has ? { x: 104, y: st.gy } : st.ball;
       if (st.me) {
         const dx = tgt.x - st.me.x, dy = tgt.y - st.me.y;
         if (dx > 6) want.add('ArrowRight'); if (dx < -6) want.add('ArrowLeft'); if (dy > 6) want.add('ArrowDown'); if (dy < -6) want.add('ArrowUp');
         if (!st.has) want.add('Shift');
       }
       await press(want);
-      if (st.has && st.me.y < 110) { await page.keyboard.down('x'); await wait(350); await page.keyboard.up('x'); shots++; }
+      if (st.has && Math.abs(st.me.y - st.gy) < 110) { await page.keyboard.down('x'); await wait(350); await page.keyboard.up('x'); shots++; }
       else if (st.has && i % 9 === 4) { await tap('z', 1, 30); passes++; }
       else if (!st.has && i % 6 === 0) await tap('x', 1, 30);   // tackle
       if (i === 20) await shot('play');
@@ -407,6 +413,26 @@ const scenarios = {
     console.log('pause:', await page.evaluate(() => window.game.scene.getScene('match').mode));
   },
 
+  // a generic PC pad: Square (3) shoots, L2 (8) must NOT mute, Options (11) pauses, d-pad (axes 6/7) moves
+  async generic() {
+    const btn = (i, v) => page.evaluate(([i, v]) => { window.__pads[0].buttons[i].pressed = v; }, [i, v]);
+    await page.goto(url + '/?match'); await wait(1800);
+    await btn(0, true); await wait(150); await btn(0, false); await wait(700);   // Cross picks 1 PLAYER
+    const m = () => page.evaluate(() => { const s = window.game.scene.getScene('match'), me = s.m.controlled(0); return { mode: s.mode, me: me?.def.id, x: me?.x | 0, charge: me?.charge ?? -1, shots: s.m.stats.shots[0] }; });
+    console.log('Cross starts:', (await m()).mode);
+    await btn(3, true); await wait(400); const c = await m(); await btn(3, false); await wait(300);
+    console.log(`Square: charge ${c.charge.toFixed(2)} -> shots ${(await m()).shots}`);
+    const muted = () => page.evaluate(() => localStorage.getItem('rls-muted'));
+    await btn(8, true); await wait(150); await btn(8, false); await wait(200);
+    console.log('L2 mutes?', await page.evaluate(() => window.__sfxMuted?.() ?? 'n/a'));
+    const x0 = (await m()).x;
+    await page.evaluate(() => { window.__pads[0].axes[6] = 1; }); await wait(700); await page.evaluate(() => { window.__pads[0].axes[6] = 0; });
+    console.log(`d-pad right moved ${(await m()).x - x0}px`);
+    await btn(11, true); await wait(150); await btn(11, false); await wait(300);
+    console.log('Options pauses:', (await m()).mode);
+    void muted;
+  },
+
   // two controllers: co-op (pad 2 = Hussein) then versus (pad 2 = the teachers)
   async match2() {
     const btn = (p, i, v) => page.evaluate(([p, i, v]) => { window.__pads[p].buttons[i].pressed = v; }, [p, i, v]);
@@ -420,12 +446,11 @@ const scenarios = {
     await ax(1, 0.6, 0); await wait(700); await ax(1, 0, 0);
     const after = await page.evaluate(() => window.game.scene.getScene('match').m.gk(0).x);
     console.log(`co-op: pad 2 moved Hussein ${Math.round(after - before)}px right`);
-    // pad 1 (P1): stick up with the ball, then B held = charge, released = shot
-    await ax(0, 0, -1); await wait(1200); await ax(0, 0, 0);
-    await btn(0, 1, true); await wait(400);
+    // pad 1 (P1): Square held = charge, released = shot (FIFA layout)
+    await btn(0, 2, true); await wait(400);
     const charge = await page.evaluate(() => { const m = window.game.scene.getScene('match').m; return m.controlled(0)?.charge ?? -1; });
-    await btn(0, 1, false); await wait(300); await shot('coop');
-    console.log(`co-op: P1 charge while holding B = ${charge.toFixed(2)}`);
+    await btn(0, 2, false); await wait(300); await shot('coop');
+    console.log(`co-op: P1 charge while holding Square = ${charge.toFixed(2)}, shots ${await page.evaluate(() => window.game.scene.getScene('match').m.stats.shots[0])}`);
     // the bridge must not turn pad 1 into keyboard presses during play (no double input), but Start still pauses
     await btn(0, 9, true); await wait(150); await btn(0, 9, false); await wait(300);
     console.log('Start pauses:', await page.evaluate(() => window.game.scene.getScene('match').mode));
